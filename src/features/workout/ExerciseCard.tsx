@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import type { Exercise, SetType, WorkoutExercise, WorkoutSet } from '../../db/types'
 import { db } from '../../db/schema'
 import { deleteSet, updateSet } from '../../db/workouts'
 import { MUSCLE_LABELS } from '../../domain/muscles'
 import { matchPrevious } from '../../domain/previous'
+import type { Suggestion } from '../../domain/progression'
 import { formatClock, formatNumber } from '../../lib/format'
 import { startRest, unlockAudio } from '../../lib/restTimer'
 import { NumberField } from '../../components/NumberField'
@@ -14,6 +16,7 @@ interface Props {
   exercise: Exercise
   sets: WorkoutSet[]
   previous: WorkoutSet[]
+  suggestion?: Suggestion
   isActive: boolean
   isFirst: boolean
   isLast: boolean
@@ -40,13 +43,18 @@ export function ExerciseCard(props: Props) {
       ? `Target ${we.repMin === we.repMax ? we.repMin : `${we.repMin}–${we.repMax}`} reps${we.targetRir != null ? ` · RIR ${we.targetRir}` : ''}`
       : null
 
+  // When the suggestion changes the load, last time's reps no longer apply.
+  const loadChanged = props.suggestion?.kind === 'increase' || props.suggestion?.kind === 'deload'
+  const repsHint = (set: WorkoutSet, prev: WorkoutSet | undefined) =>
+    loadChanged && set.type !== 'warmup' ? props.suggestion!.reps : (prev?.reps ?? we.repMin ?? null)
+
   const toggleDone = async (set: WorkoutSet, prev: WorkoutSet | undefined) => {
     unlockAudio()
     // Read the stored row: a value typed just before tapping may not have re-rendered yet.
     const current = (await db.sets.get(set.id)) ?? set
     if (current.done) return updateSet(set.id, { done: false })
     const weightKg = current.weightKg ?? prev?.weightKg ?? null
-    const reps = current.reps ?? prev?.reps ?? we.repMin ?? null
+    const reps = current.reps ?? repsHint(current, prev)
     if (reps == null) return // nothing to log yet
     await updateSet(set.id, { done: true, weightKg: weightKg ?? 0, reps })
     if (isActive) startRest(we.restSec)
@@ -58,7 +66,9 @@ export function ExerciseCard(props: Props) {
     <section className="card px-3">
       <div className="mb-2 flex items-start gap-2 px-1">
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold text-accent">{exercise.name}</h3>
+          <Link to={`/exercise/${exercise.id}`} className="font-semibold text-accent">
+            {exercise.name}
+          </Link>
           <p className="text-xs text-muted">
             {MUSCLE_LABELS[exercise.primaryMuscle]}
             {exercise.secondaryMuscles.length > 0 && ` · ${exercise.secondaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}
@@ -67,6 +77,7 @@ export function ExerciseCard(props: Props) {
             {target && <span>{target} · </span>}
             Rest {we.restSec > 0 ? formatClock(we.restSec) : 'off'}
           </p>
+          {props.suggestion && <SuggestionNote suggestion={props.suggestion} />}
         </div>
         <button className="btn-ghost -mr-1 text-xl leading-none" onClick={() => setMenuOpen(true)} aria-label="Exercise options">
           ⋯
@@ -117,7 +128,7 @@ export function ExerciseCard(props: Props) {
                 ariaLabel="Reps"
                 className="h-9 w-full rounded-md bg-surface-2 text-center font-semibold outline-none focus:ring-1 focus:ring-accent"
                 value={set.reps}
-                placeholder={prev?.reps != null ? String(prev.reps) : we.repMin != null ? String(we.repMin) : '0'}
+                placeholder={String(repsHint(set, prev) ?? 0)}
                 onChange={(reps) => updateSet(set.id, { reps })}
               />
               <NumberField
@@ -203,5 +214,25 @@ export function ExerciseCard(props: Props) {
         </div>
       </Sheet>
     </section>
+  )
+}
+
+const SUGGESTION_STYLE: Record<Suggestion['kind'], { icon: string; className: string }> = {
+  increase: { icon: '⬆️', className: 'bg-good-soft' },
+  reps: { icon: '➕', className: 'bg-accent-soft' },
+  hold: { icon: '⏸️', className: 'bg-surface-2' },
+  deload: { icon: '⬇️', className: 'bg-warn/15' },
+}
+
+function SuggestionNote({ suggestion }: { suggestion: Suggestion }) {
+  const style = SUGGESTION_STYLE[suggestion.kind]
+  return (
+    <div className={`mt-2 rounded-lg px-2.5 py-1.5 text-xs ${style.className}`}>
+      <span className="font-semibold">
+        {style.icon} Today: {suggestion.weightKg > 0 ? `${formatNumber(suggestion.weightKg)} kg × ` : ''}
+        {suggestion.reps} reps
+      </span>
+      <span className="text-muted"> · {suggestion.reason}</span>
+    </div>
   )
 }

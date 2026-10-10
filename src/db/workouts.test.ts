@@ -79,3 +79,21 @@ describe('workout flow', () => {
     expect([we.repMin, we.repMax]).toEqual([5, 8])
   })
 })
+
+describe('progression in routines', () => {
+  it('pre-fills the heavier weight once the top of the rep range was hit', async () => {
+    const routineId = await createRoutine('Pull')
+    await addRoutineExercise(routineId, await exercise('barbell-row'))
+    const [item] = await db.routineExercises.where('routineId').equals(routineId).toArray()
+    await updateRoutineExercise(item.id, { sets: 3, repMin: 8, repMax: 12, targetRir: 2 })
+
+    const first = await startWorkout(routineId)
+    const sets = await db.sets.where('workoutId').equals(first).sortBy('order')
+    for (const set of sets) await updateSet(set.id, { weightKg: 60, reps: 12, rir: 2, done: true })
+    await finishWorkout(first)
+
+    const second = await startWorkout(routineId)
+    const next = await db.sets.where('workoutId').equals(second).sortBy('order')
+    expect(next.map((s) => s.weightKg)).toEqual([62.5, 62.5, 62.5])
+  })
+})

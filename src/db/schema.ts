@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type {
+  BodyweightEntry,
   Exercise,
   MacroEntry,
   MealPreset,
@@ -29,6 +30,7 @@ export class LiftDB extends Dexie {
   macroEntries!: EntityTable<MacroEntry, 'id'>
   mealPresets!: EntityTable<MealPreset, 'id'>
   kv!: EntityTable<KeyValue, 'key'>
+  bodyweight!: EntityTable<BodyweightEntry, 'date'>
 
   constructor(name = 'lift') {
     super(name)
@@ -44,6 +46,8 @@ export class LiftDB extends Dexie {
       mealPresets: 'id, label',
       kv: 'key',
     })
+    // v2: bodyweight log. Dexie upgrades existing databases in place.
+    this.version(2).stores({ bodyweight: 'date' })
     this.on('populate', (tx) => {
       tx.table('exercises').bulkAdd(SEED_EXERCISES)
     })

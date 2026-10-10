@@ -3,6 +3,7 @@ import type { Exercise, Workout, WorkoutExercise, WorkoutSet } from './types'
 import { totalVolume } from '../domain/volume'
 import { muscleSetCounts, musclesHit } from '../domain/muscleSets'
 import type { Muscle } from '../domain/muscles'
+import { computeRecords, type ExerciseRecords, type RecordSet } from '../domain/records'
 
 export interface WorkoutSummary {
   workout: Workout
@@ -68,4 +69,44 @@ export function combineMuscleSets(summaries: WorkoutSummary[]): Partial<Record<M
     }
   }
   return total
+}
+
+export interface ExerciseRecordRow {
+  exercise: Exercise
+  records: ExerciseRecords
+  sessions: number
+  lastAt: number
+}
+
+/** Personal records for every exercise you've logged, strongest first. */
+export async function loadAllRecords(exercises: Map<string, Exercise>): Promise<ExerciseRecordRow[]> {
+  const workouts = await db.workouts.where('status').equals('done').toArray()
+  const startedAt = new Map(workouts.map((w) => [w.id, w.startedAt]))
+  const [wes, sets] = await Promise.all([db.workoutExercises.toArray(), db.sets.toArray()])
+  const weById = new Map(wes.map((we) => [we.id, we]))
+
+  const byExercise = new Map<string, { sets: RecordSet[]; workouts: Set<string> }>()
+  for (const set of sets) {
+    const at = startedAt.get(set.workoutId)
+    const we = weById.get(set.workoutExerciseId)
+    if (at == null || !we) continue
+    const entry = byExercise.get(we.exerciseId) ?? { sets: [], workouts: new Set() }
+    entry.sets.push({ ...set, at })
+    entry.workouts.add(set.workoutId)
+    byExercise.set(we.exerciseId, entry)
+  }
+
+  const rows: ExerciseRecordRow[] = []
+  for (const [exerciseId, { sets: exSets, workouts: ws }] of byExercise) {
+    const exercise = exercises.get(exerciseId)
+    if (!exercise) continue
+    const records = computeRecords(exSets)
+    if (!records.heaviest && !records.bestSetVolume) continue
+    rows.push({ exercise, records, sessions: ws.size, lastAt: Math.max(...exSets.map((s) => s.at)) })
+  }
+  return rows.sort(
+    (a, b) =>
+      (b.records.bestE1rm?.value ?? b.records.heaviest?.weightKg ?? 0) -
+      (a.records.bestE1rm?.value ?? a.records.heaviest?.weightKg ?? 0),
+  )
 }

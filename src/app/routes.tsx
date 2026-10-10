@@ -3,7 +3,10 @@ import { AppShell } from './AppShell'
 import { HomePage } from '../features/home/HomePage'
 import { TrainPage } from '../features/train/TrainPage'
 import { WorkoutPage } from '../features/workout/WorkoutPage'
-import { HistoryPage } from '../features/history/HistoryPage'
+import { WorkoutsPage } from '../features/progress/WorkoutsPage'
+import { ExercisesPage } from '../features/progress/ExercisesPage'
+import { ExerciseHistoryPage } from '../features/progress/ExerciseHistoryPage'
+import { BodyPage } from '../features/progress/BodyPage'
 import { WorkoutDetailPage } from '../features/history/WorkoutDetailPage'
 import { PlanPage } from '../features/plan/PlanPage'
 import { RoutineEditorPage } from '../features/plan/RoutineEditorPage'
@@ -18,7 +21,10 @@ export const router = createHashRouter([
       { path: '/', element: <HomePage /> },
       { path: '/train', element: <TrainPage /> },
       { path: '/workout/:id', element: <WorkoutPage /> },
-      { path: '/history', element: <HistoryPage /> },
+      { path: '/history', element: <WorkoutsPage /> },
+      { path: '/history/exercises', element: <ExercisesPage /> },
+      { path: '/history/body', element: <BodyPage /> },
+      { path: '/exercise/:id', element: <ExerciseHistoryPage /> },
       { path: '/history/:id', element: <WorkoutDetailPage /> },
       { path: '/plan', element: <PlanPage /> },
       { path: '/plan/routine/:id', element: <RoutineEditorPage /> },

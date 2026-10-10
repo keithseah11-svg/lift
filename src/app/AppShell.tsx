@@ -6,7 +6,7 @@ const TABS = [
   { to: '/train', label: 'Train', icon: '🏋️' },
   { to: '/plan', label: 'Plan', icon: '📅' },
   { to: '/food', label: 'Food', icon: '🍗' },
-  { to: '/history', label: 'History', icon: '📈' },
+  { to: '/history', label: 'Progress', icon: '📈' },
 ]
 
 export function AppShell() {

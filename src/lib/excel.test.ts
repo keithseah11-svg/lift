@@ -4,6 +4,7 @@ import { db } from '../db/schema'
 import { addExerciseToWorkout, finishWorkout, startWorkout, updateSet } from '../db/workouts'
 import { addRoutineExercise, createRoutine, setScheduleDay } from '../db/routines'
 import { addMacroEntry, addMealPreset } from '../db/macros'
+import { setWeighIn } from '../db/bodyweight'
 import { updateSettings, getSettings } from '../db/settings'
 import { BackupImportError, buildBackupWorkbook, parseBackupWorkbook, restoreBackup } from './excel'
 
@@ -24,6 +25,7 @@ async function snapshot() {
     schedule: await db.schedule.toArray(),
     macroEntries: sortById(await db.macroEntries.toArray()),
     mealPresets: sortById(await db.mealPresets.toArray()),
+    bodyweight: await db.bodyweight.orderBy('date').toArray(),
     settings: await getSettings(),
   }
 }
@@ -43,6 +45,8 @@ describe('excel backup', () => {
     await setScheduleDay(0, routineId)
     await setScheduleDay(2, null)
     await addMacroEntry('2026-10-09', 'Chicken rice', { proteinG: 45, carbsG: 60.5, fatG: 12, kcal: 530 })
+    await setWeighIn('2026-10-08', 80.4)
+    await setWeighIn('2026-10-09', 80.15)
     await addMealPreset('Shake', { proteinG: 30, carbsG: 5, fatG: 2, kcal: 158 })
     await updateSettings({ weeklySessionTarget: 5, lastBackupAt: 1_760_000_000_000 })
     await db.exercises.add({
@@ -70,6 +74,16 @@ describe('excel backup', () => {
     before.routines = before.routines.map((r) => ({ ...r, createdAt: roundSec(r.createdAt)! }))
     before.macroEntries = before.macroEntries.map((m) => ({ ...m, createdAt: roundSec(m.createdAt)! }))
     expect(after).toEqual(before)
+  })
+
+  it('imports backups made before the Bodyweight sheet existed', async () => {
+    await setWeighIn('2026-10-09', 80)
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(await buildBackupWorkbook())
+    wb.removeWorksheet(wb.getWorksheet('Bodyweight')!.id)
+    const older = (await wb.xlsx.writeBuffer()) as ArrayBuffer
+    const parsed = await parseBackupWorkbook(older)
+    expect(parsed.tables.bodyweight).toEqual([])
   })
 
   it('rejects files that are not Lift backups', async () => {

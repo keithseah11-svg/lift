@@ -1,10 +1,41 @@
 import { db } from './schema'
 import { newId } from '../lib/id'
 import type { Exercise, SetType, Workout, WorkoutExercise, WorkoutSet } from './types'
+import { STALL_SESSIONS, suggestNext, type Suggestion } from '../domain/progression'
 
 export interface PreviousPerformance {
   workout: Workout
   sets: WorkoutSet[]
+}
+
+/**
+ * Finished sessions that included this exercise, newest first, each with its
+ * completed sets (warm-ups included) in order.
+ */
+export async function exerciseSessions(
+  exerciseId: string,
+  { before = Infinity, limit = Infinity }: { before?: number; limit?: number } = {},
+): Promise<PreviousPerformance[]> {
+  const wes = await db.workoutExercises.where('exerciseId').equals(exerciseId).toArray()
+  if (wes.length === 0) return []
+  const workouts = await db.workouts.bulkGet([...new Set(wes.map((we) => we.workoutId))])
+  const candidates = workouts
+    .filter((w): w is Workout => !!w && w.status === 'done' && w.startedAt < before)
+    .sort((a, b) => b.startedAt - a.startedAt)
+  const sets = await db.sets
+    .where('workoutExerciseId')
+    .anyOf(wes.map((we) => we.id))
+    .filter((s) => s.done)
+    .toArray()
+
+  const sessions: PreviousPerformance[] = []
+  for (const workout of candidates) {
+    if (sessions.length >= limit) break
+    const weIds = new Set(wes.filter((we) => we.workoutId === workout.id).map((we) => we.id))
+    const own = sets.filter((s) => weIds.has(s.workoutExerciseId)).sort((a, b) => a.order - b.order)
+    if (own.length > 0) sessions.push({ workout, sets: own })
+  }
+  return sessions
 }
 
 /** The most recent finished session that included this exercise, before `before`. */
@@ -12,34 +43,41 @@ export async function previousPerformance(
   exerciseId: string,
   before: number = Date.now(),
 ): Promise<PreviousPerformance | null> {
-  const wes = await db.workoutExercises.where('exerciseId').equals(exerciseId).toArray()
-  if (wes.length === 0) return null
-  const workouts = await db.workouts.bulkGet([...new Set(wes.map((we) => we.workoutId))])
-  const candidates = workouts
-    .filter((w): w is Workout => !!w && w.status === 'done' && w.startedAt < before)
-    .sort((a, b) => b.startedAt - a.startedAt)
-  for (const workout of candidates) {
-    const weIds = wes.filter((we) => we.workoutId === workout.id).map((we) => we.id)
-    const sets = (await db.sets.where('workoutExerciseId').anyOf(weIds).toArray())
-      .filter((s) => s.done)
-      .sort((a, b) => a.order - b.order)
-    if (sets.length > 0) return { workout, sets }
-  }
-  return null
+  return (await exerciseSessions(exerciseId, { before, limit: 1 }))[0] ?? null
+}
+
+/** Next-session suggestion from recent history, or null without history/targets. */
+export async function suggestionFor(
+  exercise: Exercise,
+  target: { repMin: number | null; repMax: number | null; targetRir: number | null },
+  before: number = Date.now(),
+): Promise<Suggestion | null> {
+  if (target.repMin == null || target.repMax == null) return null
+  const sessions = await exerciseSessions(exercise.id, { before, limit: STALL_SESSIONS + 1 })
+  return suggestNext(
+    sessions.map((p) => p.sets.filter((s) => s.type !== 'warmup')),
+    { repMin: target.repMin, repMax: target.repMax, targetRir: target.targetRir, incrementKg: exercise.incrementKg },
+  )
 }
 
 export async function getActiveWorkout(): Promise<Workout | undefined> {
   return db.workouts.where('status').equals('active').first()
 }
 
+/**
+ * Empty set rows pre-filled with last session's weights. When the progression
+ * rules say to change the load (add weight or deload), every set gets the new weight.
+ */
 async function buildSets(
   workoutId: string,
   workoutExerciseId: string,
   count: number,
   exerciseId: string,
+  suggestion: Suggestion | null = null,
 ): Promise<WorkoutSet[]> {
   const prev = await previousPerformance(exerciseId)
   const prevWorking = prev?.sets.filter((s) => s.type !== 'warmup') ?? []
+  const loadChange = suggestion && (suggestion.kind === 'increase' || suggestion.kind === 'deload')
   return Array.from({ length: count }, (_, i) => {
     const ref = prevWorking[i] ?? prevWorking[prevWorking.length - 1]
     return {
@@ -48,7 +86,7 @@ async function buildSets(
       workoutExerciseId,
       order: i,
       type: 'working' as SetType,
-      weightKg: ref?.weightKg ?? null,
+      weightKg: loadChange ? suggestion.weightKg : (ref?.weightKg ?? null),
       reps: null,
       rir: null,
       done: false,
@@ -92,7 +130,9 @@ export async function startWorkout(routineId: string | null = null): Promise<str
         supersetGroup: item.supersetGroup,
         notes: '',
       })
-      sets.push(...(await buildSets(workoutId, weId, item.sets, item.exerciseId)))
+      const exercise = await db.exercises.get(item.exerciseId)
+      const suggestion = exercise ? await suggestionFor(exercise, item) : null
+      sets.push(...(await buildSets(workoutId, weId, item.sets, item.exerciseId, suggestion)))
     }
   }
 

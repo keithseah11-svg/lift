@@ -43,7 +43,7 @@ export function SettingsPage() {
       const { parseBackupWorkbook, restoreBackup } = await import('../../lib/excel')
       const backup = await parseBackupWorkbook(await file.arrayBuffer())
       const t = backup.tables
-      const summary = `${t.workouts.length} workouts, ${t.sets.length} sets, ${t.routines.length} routines, ${t.macroEntries.length} food entries`
+      const summary = `${t.workouts.length} workouts, ${t.sets.length} sets, ${t.routines.length} routines, ${t.macroEntries.length} food entries, ${t.bodyweight.length} weigh-ins`
       if (!confirm(`Restore ${summary}?\n\nThis REPLACES all data currently in the app.`)) return
       await restoreBackup(backup)
       setImportMessage({ ok: true, text: `Restored ${summary}.` })

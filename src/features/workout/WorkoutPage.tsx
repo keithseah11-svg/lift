@@ -10,11 +10,13 @@ import {
   finishWorkout,
   moveWorkoutExercise,
   previousPerformance,
+  suggestionFor,
   removeWorkoutExercise,
   updateWorkout,
   updateWorkoutExercise,
 } from '../../db/workouts'
 import type { WorkoutSet } from '../../db/types'
+import type { Suggestion } from '../../domain/progression'
 import { totalVolume } from '../../domain/volume'
 import { formatDuration, formatVolume } from '../../lib/format'
 import { stopRest, useNow } from '../../lib/restTimer'
@@ -46,6 +48,19 @@ export function WorkoutPage() {
     )
     return new Map(entries)
   }, [exerciseIdsKey, workout?.startedAt])
+
+  // Progression suggestions only make sense with a target rep range (routine exercises).
+  const targetsKey = workoutExercises?.map((we) => `${we.id}:${we.exerciseId}:${we.repMin}:${we.repMax}:${we.targetRir}`).join('|') ?? ''
+  const suggestions = useLiveQuery(async () => {
+    const map = new Map<string, Suggestion>()
+    if (!workout || !workoutExercises) return map
+    for (const we of workoutExercises) {
+      const exercise = await db.exercises.get(we.exerciseId)
+      const suggestion = exercise && (await suggestionFor(exercise, we, workout.startedAt))
+      if (suggestion) map.set(we.id, suggestion)
+    }
+    return map
+  }, [targetsKey, workout?.startedAt])
 
   const isActive = workout?.status === 'active'
   const now = useNow(isActive, 1000)
@@ -117,6 +132,7 @@ export function WorkoutPage() {
               exercise={exercise}
               sets={sets.filter((s) => s.workoutExerciseId === we.id).sort((a, b) => a.order - b.order)}
               previous={previous?.get(we.exerciseId) ?? []}
+              suggestion={isActive ? suggestions?.get(we.id) : undefined}
               isActive={isActive}
               isFirst={i === 0}
               isLast={i === workoutExercises.length - 1}

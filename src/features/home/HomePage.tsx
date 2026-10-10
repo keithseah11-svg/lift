@@ -12,6 +12,11 @@ import { formatVolume } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
 import { ProgressBar } from '../../components/ProgressBar'
 import { MuscleSetList } from '../../components/MuscleSetList'
+import { BodyHeatmap } from '../../components/BodyHeatmap'
+import { loadAllRecords } from '../../db/stats'
+import { weekStreak } from '../../domain/streak'
+import { weeklyRate, withSevenDayAverage } from '../../domain/bodyweight'
+import { formatKg, formatNumber } from '../../lib/format'
 import { useWeekStats } from './useWeekStats'
 
 const BACKUP_REMINDER_DAYS = 7
@@ -31,6 +36,13 @@ export function HomePage() {
   }, [weekdayIndex(today)])
   const macroEntries = useLiveQuery(() => db.macroEntries.where('date').equals(todayKey).toArray(), [todayKey])
   const workoutCount = useLiveQuery(() => db.workouts.count(), [])
+  const records = useLiveQuery(async () => (exerciseMap ? loadAllRecords(exerciseMap) : undefined), [exerciseMap])
+  const doneTimes = useLiveQuery(async () => (await db.workouts.where('status').equals('done').toArray()).map((w) => w.startedAt), [])
+  const bodyweight = useLiveQuery(async () => {
+    const points = withSevenDayAverage(await db.bodyweight.orderBy('date').toArray())
+    return points.length ? { latest: points[points.length - 1], rate: weeklyRate(points) } : null
+  }, [])
+  const streak = weekStreak(doneTimes ?? [], settings.weeklySessionTarget)
 
   const trainedToday = week?.summaries.filter((s) => dayKey(s.workout.startedAt) === todayKey) ?? []
   const sessions = week?.summaries.length ?? 0
@@ -120,7 +132,10 @@ export function HomePage() {
         <section className="card space-y-3">
           <div className="flex items-baseline justify-between">
             <h2 className="font-bold">This week</h2>
-            <span className="text-sm text-muted">{formatVolume(week?.volume ?? 0)} lifted</span>
+            <span className="text-sm text-muted">
+              {streak > 0 && `🔥 ${streak} wk streak · `}
+              {formatVolume(week?.volume ?? 0)} lifted
+            </span>
           </div>
           <div>
             <div className="mb-1 flex justify-between text-sm">
@@ -144,17 +159,65 @@ export function HomePage() {
 
         <section className="card">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="font-bold">Sets per muscle</h2>
+            <h2 className="font-bold">Muscles this week</h2>
             <span className="text-xs text-muted">
-              target {settings.weeklySetMin}–{settings.weeklySetMax}
+              target {settings.weeklySetMin}–{settings.weeklySetMax} sets
             </span>
           </div>
+          <BodyHeatmap counts={week?.muscleSets ?? {}} target={{ min: settings.weeklySetMin, max: settings.weeklySetMax }} />
+          <div className="my-4 border-t border-line" />
           <MuscleSetList counts={week?.muscleSets ?? {}} target={{ min: settings.weeklySetMin, max: settings.weeklySetMax }} showAll />
           <p className="mt-3 text-xs text-muted">
             <span className="text-warn">■</span> under · <span className="text-good">■</span> in range ·{' '}
             <span className="text-bad">■</span> over. Secondary muscles count as ½ set.
           </p>
         </section>
+
+        <section className="card">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="font-bold">Personal records</h2>
+            <Link to="/history/exercises" className="text-sm text-accent">
+              See all
+            </Link>
+          </div>
+          {records && records.length === 0 && <p className="text-sm text-muted">Finish a workout to set your first records.</p>}
+          <ul className="divide-y divide-line">
+            {records?.slice(0, 6).map(({ exercise, records: r }) => (
+              <li key={exercise.id}>
+                <Link to={`/exercise/${exercise.id}`} className="flex items-center gap-3 py-2">
+                  <span className="min-w-0 flex-1 truncate text-sm">{exercise.name}</span>
+                  {r.heaviest && (
+                    <span className="text-xs text-muted tabular-nums">
+                      {formatNumber(r.heaviest.weightKg)} × {r.heaviest.reps}
+                    </span>
+                  )}
+                  <span className="w-20 text-right text-sm font-semibold tabular-nums">
+                    {r.bestE1rm ? formatKg(Math.round(r.bestE1rm.value * 10) / 10) : r.heaviest ? formatKg(r.heaviest.weightKg) : '—'}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {records && records.length > 0 && (
+            <p className="mt-1 text-xs text-muted">Right column: best estimated 1-rep max. Middle: heaviest set.</p>
+          )}
+        </section>
+
+        <Link to="/history/body" className="card flex items-center justify-between">
+          <div>
+            <h2 className="font-bold">Bodyweight</h2>
+            <div className="text-sm text-muted">
+              {bodyweight
+                ? bodyweight.rate == null
+                  ? '7-day average'
+                  : `${bodyweight.rate > 0 ? '+' : bodyweight.rate < 0 ? '−' : ''}${formatNumber(Math.abs(Math.round(bodyweight.rate * 100) / 100))} kg/week`
+                : 'Tap to log your first weigh-in'}
+            </div>
+          </div>
+          <span className="text-xl font-semibold">
+            {bodyweight ? `${formatNumber(Math.round(bodyweight.latest.average * 10) / 10)} kg` : '+'}
+          </span>
+        </Link>
 
         <Link to="/food" className="card block">
           <div className="mb-3 flex items-baseline justify-between">

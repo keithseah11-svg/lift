@@ -42,6 +42,8 @@ interface SheetSpec<T> {
   table: keyof typeof TABLES
   columns: Column<T>[]
   schema: z.ZodType<T>
+  /** Sheets added after v1 backups: missing on import means "empty", not an error. */
+  optional?: boolean
 }
 
 const TABLES = {
@@ -54,6 +56,7 @@ const TABLES = {
   schedule: () => db.schedule,
   macroEntries: () => db.macroEntries,
   mealPresets: () => db.mealPresets,
+  bodyweight: () => db.bodyweight,
 }
 
 const muscle = z.enum(MUSCLES)
@@ -282,6 +285,19 @@ const SPECS = [
       { header: 'ID', field: 'id', kind: 'string', width: 12 },
     ],
   },
+  {
+    name: 'Bodyweight',
+    table: 'bodyweight',
+    optional: true,
+    schema: z.object({
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      kg: z.number().positive(),
+    }),
+    columns: [
+      { header: 'Date', field: 'date', kind: 'string', width: 12 },
+      { header: 'Weight (kg)', field: 'kg', kind: 'number', width: 12 },
+    ],
+  },
 ] satisfies SheetSpec<any>[]
 
 const SETTINGS_SHEET = 'Settings'
@@ -391,6 +407,7 @@ export async function buildBackupWorkbook(): Promise<ArrayBuffer> {
   for (const spec of SPECS as SheetSpec<any>[]) {
     const rows: any[] = await TABLES[spec.table]().toArray()
     if (spec.table === 'sets') rows.sort((a, b) => compareSets(a, b, ctx))
+    if (spec.table === 'bodyweight') rows.sort((a, b) => a.date.localeCompare(b.date))
     const ws = wb.addWorksheet(spec.name)
     ws.columns = spec.columns.map((c) => ({
       header: c.header,
@@ -498,6 +515,10 @@ export async function parseBackupWorkbook(data: ArrayBuffer): Promise<ParsedBack
   const tables = {} as ParsedBackup['tables']
   for (const spec of SPECS as SheetSpec<any>[]) {
     const ws = wb.getWorksheet(spec.name)
+    if (!ws && spec.optional) {
+      tables[spec.table] = []
+      continue
+    }
     if (!ws) throw new BackupImportError(`Sheet "${spec.name}" is missing — is this a Lift backup?`)
     const headerIndex = new Map<string, number>()
     ws.getRow(1).eachCell((cell, col) => headerIndex.set(String(plainCellValue(cell.value) ?? '').trim(), col))

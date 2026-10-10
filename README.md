@@ -15,6 +15,17 @@ All data stays on your phone — there is no server or account.
 - **Macros** — daily targets, what's left today, quick-add presets for meals you eat often
 - **Excel backup** — export everything to one `.xlsx`, and restore from it
 
+## Features (Phase 2)
+
+- **Progression suggestions** — double progression with an RIR target: hit the top of the rep range on
+  every set at target RIR → add the weight step (pre-filled when you start the routine); otherwise add reps;
+  three sessions without progress → drop ~10%
+- **Personal records** — best estimated 1RM, heaviest set and best set volume per exercise, listed on Home
+- **Exercise history** — per-exercise charts (est. 1RM, top set, volume) and every past session
+- **Muscle heatmap** — front/back body map coloured by this week's sets vs target
+- **Calendar & streak** — month view of trained and planned days; weeks in a row hitting your session target
+- **Bodyweight log** — daily weigh-ins, 7-day average trend line and kg/week rate
+
 ## Install on iPhone
 
 1. Open the site in **Safari**.
@@ -36,7 +47,8 @@ npm run preview    # serve the production build at http://localhost:4173/lift/
 ### Tech stack
 
 React + TypeScript + Vite · Tailwind CSS · Dexie (IndexedDB) · React Router (hash routing) ·
-vite-plugin-pwa · ExcelJS · Zod · date-fns · Vitest
+vite-plugin-pwa · ExcelJS · Zod · date-fns · Vitest. Charts and the body map are hand-written SVG
+(no chart library) to keep the app small.
 
 ### Project layout
 
@@ -44,8 +56,9 @@ vite-plugin-pwa · ExcelJS · Zod · date-fns · Vitest
 src/
   app/        routes and the tab-bar shell
   db/         Dexie schema, seed exercise library, data operations
-  domain/     pure calculations (volume, muscle sets, macros, weeks) — unit-tested
-  features/   screens: home, train, workout, history, plan, nutrition, settings
+  domain/     pure calculations (volume, muscle sets, macros, weeks, records,
+              progression, bodyweight trend, streaks) — unit-tested
+  features/   screens: home, train, workout, history, progress, plan, nutrition, settings
   components/ shared UI
   lib/        Excel backup, rest timer, iOS share/download, formatting
 ```

@@ -99,6 +99,12 @@ export interface MealPreset {
   kcal: number
 }
 
+export interface BodyweightEntry {
+  /** yyyy-MM-dd local date; one weigh-in per day */
+  date: string
+  kg: number
+}
+
 export interface MacroTarget {
   proteinG: number
   carbsG: number
