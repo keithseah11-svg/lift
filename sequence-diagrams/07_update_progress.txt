@@ -1,0 +1,49 @@
+title UC7 - Update Apprenticeship Progress (ECB)
+
+actor ExistingHawker
+boundary ":ApprenticeshipUI" as ApprenticeshipUI
+control ":ApprenticeshipController" as ApprenticeshipController
+entity ":Apprenticeship" as Apprenticeship
+entity ":ApprenticeshipPhase" as ApprenticeshipPhase
+entity ":TrainingSession" as TrainingSession
+entity ":Skill" as Skill
+control ":DataManager\n<<singleton>>" as DataManager
+
+ExistingHawker->ApprenticeshipUI: record session / skill mastery
+activate ApprenticeshipUI
+ApprenticeshipUI->ApprenticeshipController: updateProgress(apprenticeshipID, progress)
+activate ApprenticeshipController
+ApprenticeshipController->Apprenticeship: get current phase
+activate Apprenticeship
+Apprenticeship-->ApprenticeshipController: ApprenticeshipPhase
+deactivate Apprenticeship
+opt new training session logged
+ApprenticeshipController->*TrainingSession: <<create>> (sessionDate, duration, sessionNotes)
+end
+loop for each skill in progress
+ApprenticeshipController->Skill: set masteryStatus
+activate Skill
+Skill-->ApprenticeshipController: updated
+deactivate Skill
+end
+opt all skills in phase mastered
+ApprenticeshipController->ApprenticeshipPhase: phaseStatus = "Completed", completionDate = today
+activate ApprenticeshipPhase
+ApprenticeshipPhase-->ApprenticeshipController: updated
+deactivate ApprenticeshipPhase
+end
+ApprenticeshipController->Apprenticeship: recalculate overallProgress
+activate Apprenticeship
+alt all phases completed
+Apprenticeship->Apprenticeship: apprenticeshipStatus = "Completed"
+end
+Apprenticeship-->ApprenticeshipController: overallProgress
+deactivate Apprenticeship
+ApprenticeshipController->DataManager: saveData()
+activate DataManager
+DataManager-->ApprenticeshipController: saved
+deactivate DataManager
+ApprenticeshipController-->ApprenticeshipUI: updated progressView
+deactivate ApprenticeshipController
+ApprenticeshipUI-->ExistingHawker: display progress
+deactivate ApprenticeshipUI

@@ -1,0 +1,66 @@
+title UC5 - Submit Apprenticeship Application (ECB)
+
+actor AspiringHawker
+boundary ":ApprenticeshipUI" as ApprenticeshipUI
+control ":ApprenticeshipController" as ApprenticeshipController
+control ":AccessController" as AccessController
+entity ":AspiringHawker" as AH
+entity ":Certification" as Certification
+entity ":StallListing" as StallListing
+entity ":Application" as Application
+control ":DataManager\n<<singleton>>" as DataManager
+
+AspiringHawker->ApprenticeshipUI: fill applicationFormData\n(motivationStatement, selected listing)
+activate ApprenticeshipUI
+ApprenticeshipUI->ApprenticeshipController: submitApplication(applicationFormData)
+activate ApprenticeshipController
+ApprenticeshipController->AccessController: checkAccess(userID, "submitApplication")
+activate AccessController
+AccessController-->ApprenticeshipController: granted
+deactivate AccessController
+ApprenticeshipController->StallListing: get listingStatus
+activate StallListing
+StallListing-->ApprenticeshipController: listingStatus
+deactivate StallListing
+alt listing closed
+ApprenticeshipController-->ApprenticeshipUI: application rejected
+ApprenticeshipUI-->AspiringHawker: show "listing no longer open"
+else listing open
+ApprenticeshipController->AH: get skillLevel, availability
+activate AH
+AH-->ApprenticeshipController: profile
+deactivate AH
+ApprenticeshipController->Certification: get certifications
+activate Certification
+Certification-->ApprenticeshipController: certificationName, expiryDate
+deactivate Certification
+ApprenticeshipController->*Application: <<create>> (applicationDate, motivationStatement,\napplicationStatus = "Submitted")
+ApprenticeshipController->DataManager: saveData()
+activate DataManager
+DataManager-->ApprenticeshipController: saved
+deactivate DataManager
+ApprenticeshipController-->ApprenticeshipUI: applicationID
+ApprenticeshipUI-->AspiringHawker: show submission confirmation
+end
+deactivate ApprenticeshipController
+deactivate ApprenticeshipUI
+
+opt applicant withdraws
+AspiringHawker->ApprenticeshipUI: withdraw selectedApplication
+activate ApprenticeshipUI
+ApprenticeshipUI->ApprenticeshipController: updateApplicationStatus(applicationID, "Withdrawn")
+activate ApprenticeshipController
+ApprenticeshipController->Application: withdraw()
+activate Application
+Application->Application: applicationStatus = "Withdrawn"
+Application-->ApprenticeshipController: withdrawn
+deactivate Application
+ApprenticeshipController->DataManager: saveData()
+activate DataManager
+DataManager-->ApprenticeshipController: saved
+deactivate DataManager
+ApprenticeshipController-->ApprenticeshipUI: withdrawn
+deactivate ApprenticeshipController
+ApprenticeshipUI-->AspiringHawker: show "application withdrawn"
+deactivate ApprenticeshipUI
+end

@@ -1,0 +1,61 @@
+title UC2 - Search Stalls & View Stall Details (ECB)
+
+actor AspiringHawker
+boundary ":StallUI" as StallUI
+control ":StallController" as StallController
+control ":AccessController" as AccessController
+entity ":StallListingList\n<<container>>" as StallListingList
+entity ":StallListing" as StallListing
+entity ":Stall" as Stall
+entity ":CandidateRequirement" as CandidateRequirement
+
+AspiringHawker->StallUI: enter searchInput, filterCriteria
+activate StallUI
+StallUI->StallController: searchStalls(searchInput, filterCriteria)
+activate StallController
+StallController->AccessController: checkAccess(userID, "searchStalls")
+activate AccessController
+AccessController-->StallController: granted
+deactivate AccessController
+StallController->StallListingList: getListings()
+activate StallListingList
+StallListingList-->StallController: listings : List<StallListing>
+deactivate StallListingList
+loop for each listing
+StallController->StallListing: get cuisineType, location, monthlyRent, listingStatus
+activate StallListing
+StallListing-->StallController: listing details
+deactivate StallListing
+opt matches searchInput and filterCriteria and listingStatus = "Open"
+StallController->StallController: add to results
+end
+end
+StallController-->StallUI: matching listings
+deactivate StallController
+alt results found
+StallUI-->AspiringHawker: display list of stalls
+else no results
+StallUI-->AspiringHawker: display "no stalls found"
+end
+deactivate StallUI
+
+AspiringHawker->StallUI: select stall (selectedStall)
+activate StallUI
+StallUI->StallController: getStallDetails(stallID)
+activate StallController
+StallController->Stall: get stall details
+activate Stall
+Stall-->StallController: stallName, cuisineType, location, yearsOpen, monthlyRent
+deactivate Stall
+StallController->StallListing: get listing details
+activate StallListing
+StallListing-->StallController: retirementReason, minimumTrainingPeriod, listingDate
+deactivate StallListing
+StallController->CandidateRequirement: get requirements
+activate CandidateRequirement
+CandidateRequirement-->StallController: requirementType, description, mandatoryStatus
+deactivate CandidateRequirement
+StallController-->StallUI: stall details
+deactivate StallController
+StallUI-->AspiringHawker: display stall details
+deactivate StallUI

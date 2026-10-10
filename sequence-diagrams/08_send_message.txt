@@ -1,0 +1,38 @@
+title UC8 - Send Message (ECB)
+
+actor Sender
+boundary ":CommunicationUI" as CommunicationUI
+control ":CommunicationController" as CommunicationController
+control ":AccessController" as AccessController
+entity ":Match" as Match
+entity ":Message" as Message
+control ":DataManager\n<<singleton>>" as DataManager
+actor Recipient
+
+Sender->CommunicationUI: select conversation, type messageInput
+activate CommunicationUI
+CommunicationUI->CommunicationController: sendMessage(messageInput)
+activate CommunicationController
+CommunicationController->AccessController: checkAccess(userID, "sendMessage")
+activate AccessController
+AccessController-->CommunicationController: result
+deactivate AccessController
+CommunicationController->Match: get matchStatus
+activate Match
+Match-->CommunicationController: matchStatus
+deactivate Match
+alt access granted and users are matched
+CommunicationController->*Message: <<create>> (sentDateTime, messageContent,\nreadStatus = "Unread")
+CommunicationController->DataManager: saveData()
+activate DataManager
+DataManager-->CommunicationController: saved
+deactivate DataManager
+CommunicationController-->CommunicationUI: message sent
+CommunicationUI-->Sender: show message in conversation
+CommunicationUI-->>Recipient: new message notification
+else not allowed
+CommunicationController-->CommunicationUI: send failed
+CommunicationUI-->Sender: show "you can only message matched users"
+end
+deactivate CommunicationController
+deactivate CommunicationUI

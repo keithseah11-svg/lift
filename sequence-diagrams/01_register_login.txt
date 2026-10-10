@@ -1,0 +1,60 @@
+title UC1 - Register / Login (ECB)
+
+actor User
+boundary ":AccountUI" as AccountUI
+control ":AccountController" as AccountController
+control ":DataManager\n<<singleton>>" as DataManager
+entity ":User" as UserE
+
+group Register
+User->AccountUI: enter registrationDetails
+activate AccountUI
+AccountUI->AccountController: registerUser(registrationDetails)
+activate AccountController
+AccountController->DataManager: getInstance()
+activate DataManager
+DataManager-->AccountController: instance
+deactivate DataManager
+AccountController->DataManager: loadData()
+activate DataManager
+DataManager-->AccountController: existing users
+deactivate DataManager
+alt email already registered
+AccountController-->AccountUI: registration failed
+AccountUI-->User: show "email already in use"
+else new user
+AccountController->*UserE: <<create>> (userID, name, email, role)
+AccountController->DataManager: saveData()
+activate DataManager
+DataManager-->AccountController: saved
+deactivate DataManager
+AccountController-->AccountUI: registration successful
+AccountUI-->User: show success message
+end
+deactivate AccountController
+deactivate AccountUI
+end
+
+group Login
+User->AccountUI: enter emailInput, passwordInput
+activate AccountUI
+AccountUI->AccountController: login(email, password)
+activate AccountController
+AccountController->DataManager: loadData()
+activate DataManager
+DataManager-->AccountController: user record
+deactivate DataManager
+alt valid credentials
+AccountController->UserE: set authenticationStatus = authenticated
+activate UserE
+UserE-->AccountController: ok
+deactivate UserE
+AccountController-->AccountUI: login successful (role)
+AccountUI-->User: show dashboard for role
+else invalid credentials
+AccountController-->AccountUI: login failed
+AccountUI-->User: show "invalid email or password"
+end
+deactivate AccountController
+deactivate AccountUI
+end
