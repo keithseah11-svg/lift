@@ -17,6 +17,8 @@ import {
 } from '../../db/workouts'
 import type { WorkoutSet } from '../../db/types'
 import type { Suggestion } from '../../domain/progression'
+import { supersetLayout } from '../../domain/supersets'
+import { workoutGroups } from '../../db/supersets'
 import { totalVolume } from '../../domain/volume'
 import { formatDuration, formatVolume } from '../../lib/format'
 import { stopRest, useNow } from '../../lib/restTimer'
@@ -75,6 +77,7 @@ export function WorkoutPage() {
   }
   if (!workout || !workoutExercises || !sets || !exerciseMap) return null
 
+  const layout = supersetLayout(workoutExercises)
   const doneSets = sets.filter((s) => s.done && s.type !== 'warmup')
   const volume = totalVolume(sets)
   const elapsed = (workout.endedAt ?? now) - workout.startedAt
@@ -136,6 +139,9 @@ export function WorkoutPage() {
               isActive={isActive}
               isFirst={i === 0}
               isLast={i === workoutExercises.length - 1}
+              superset={layout.get(we.id)}
+              onSupersetNext={() => workoutGroups.link(we.id)}
+              onLeaveSuperset={() => workoutGroups.unlink(we.id)}
               onAddSet={() => addSet(we.id)}
               onMove={(dir) => moveWorkoutExercise(we.id, dir)}
               onRemove={() => {

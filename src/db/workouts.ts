@@ -1,6 +1,7 @@
 import { db } from './schema'
 import { newId } from '../lib/id'
 import type { Exercise, SetType, Workout, WorkoutExercise, WorkoutSet } from './types'
+import { workoutGroups } from './supersets'
 import { STALL_SESSIONS, suggestNext, type Suggestion } from '../domain/progression'
 
 export interface PreviousPerformance {
@@ -199,10 +200,12 @@ export async function updateWorkoutExercise(id: string, patch: Partial<WorkoutEx
 }
 
 export async function removeWorkoutExercise(id: string): Promise<void> {
+  const we = await db.workoutExercises.get(id)
   await db.transaction('rw', db.workoutExercises, db.sets, async () => {
     await db.sets.where('workoutExerciseId').equals(id).delete()
     await db.workoutExercises.delete(id)
   })
+  if (we) await workoutGroups.tidy(we.workoutId)
 }
 
 /** Swap an exercise with its neighbour (direction -1 = up, 1 = down). */
@@ -219,6 +222,8 @@ export async function moveWorkoutExercise(id: string, direction: -1 | 1): Promis
     await db.workoutExercises.update(we.id, { order: other.order })
     await db.workoutExercises.update(other.id, { order: we.order })
   })
+  const we = await db.workoutExercises.get(id)
+  if (we) await workoutGroups.tidy(we.workoutId)
 }
 
 export async function updateWorkout(id: string, patch: Partial<Workout>): Promise<void> {

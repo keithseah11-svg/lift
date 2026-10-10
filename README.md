@@ -26,6 +26,16 @@ All data stays on your phone — there is no server or account.
 - **Calendar & streak** — month view of trained and planned days; weeks in a row hitting your session target
 - **Bodyweight log** — daily weigh-ins, 7-day average trend line and kg/week rate
 
+## Features (Phase 3)
+
+- **Supersets** — link exercises in a routine or mid-workout (🔗 Superset with next); the rest timer only
+  starts after the last exercise of the superset
+- **Body measurements** — waist, chest, arms, thighs, body fat % and more, with change since last and since
+  first, plus a chart per body part
+- **Progress photos** — front/side/back photos resized on the phone (~1600 px), a gallery by date, and a
+  side-by-side before/after compare
+- **Photo backup** — export all photos as a .zip of JPEGs (`2026-10-10_front_1.jpg`), and import them back
+
 ## Install on iPhone
 
 1. Open the site in **Safari**.
@@ -33,6 +43,7 @@ All data stays on your phone — there is no server or account.
 3. Launch Lift from the home screen icon. It works offline.
 
 Back up regularly from **Settings (⚙️) → Export to Excel** and save the file to Files / iCloud Drive.
+Photos aren't in the Excel file; use **Export photos (.zip)** in the same screen.
 
 ## Development
 
@@ -57,7 +68,7 @@ src/
   app/        routes and the tab-bar shell
   db/         Dexie schema, seed exercise library, data operations
   domain/     pure calculations (volume, muscle sets, macros, weeks, records,
-              progression, bodyweight trend, streaks) — unit-tested
+              progression, bodyweight trend, streaks, supersets, measurements) — unit-tested
   features/   screens: home, train, workout, history, progress, plan, nutrition, settings
   components/ shared UI
   lib/        Excel backup, rest timer, iOS share/download, formatting

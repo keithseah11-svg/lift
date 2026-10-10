@@ -1,6 +1,7 @@
 import { db } from './schema'
 import { newId } from '../lib/id'
 import type { Exercise, RoutineExercise } from './types'
+import { routineGroups } from './supersets'
 
 export async function createRoutine(name: string): Promise<string> {
   const id = newId()
@@ -42,7 +43,9 @@ export async function updateRoutineExercise(id: string, patch: Partial<RoutineEx
 }
 
 export async function removeRoutineExercise(id: string): Promise<void> {
+  const re = await db.routineExercises.get(id)
   await db.routineExercises.delete(id)
+  if (re) await routineGroups.tidy(re.routineId)
 }
 
 export async function moveRoutineExercise(id: string, direction: -1 | 1): Promise<void> {
@@ -58,6 +61,8 @@ export async function moveRoutineExercise(id: string, direction: -1 | 1): Promis
     await db.routineExercises.update(re.id, { order: other.order })
     await db.routineExercises.update(other.id, { order: re.order })
   })
+  const re = await db.routineExercises.get(id)
+  if (re) await routineGroups.tidy(re.routineId)
 }
 
 export async function setScheduleDay(weekday: number, routineId: string | null): Promise<void> {

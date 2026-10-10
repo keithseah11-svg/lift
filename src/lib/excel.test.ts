@@ -5,6 +5,7 @@ import { addExerciseToWorkout, finishWorkout, startWorkout, updateSet } from '..
 import { addRoutineExercise, createRoutine, setScheduleDay } from '../db/routines'
 import { addMacroEntry, addMealPreset } from '../db/macros'
 import { setWeighIn } from '../db/bodyweight'
+import { setMeasurement } from '../db/measurements'
 import { updateSettings, getSettings } from '../db/settings'
 import { BackupImportError, buildBackupWorkbook, parseBackupWorkbook, restoreBackup } from './excel'
 
@@ -26,6 +27,7 @@ async function snapshot() {
     macroEntries: sortById(await db.macroEntries.toArray()),
     mealPresets: sortById(await db.mealPresets.toArray()),
     bodyweight: await db.bodyweight.orderBy('date').toArray(),
+    measurements: sortById(await db.measurements.toArray()),
     settings: await getSettings(),
   }
 }
@@ -46,6 +48,8 @@ describe('excel backup', () => {
     await setScheduleDay(2, null)
     await addMacroEntry('2026-10-09', 'Chicken rice', { proteinG: 45, carbsG: 60.5, fatG: 12, kcal: 530 })
     await setWeighIn('2026-10-08', 80.4)
+    await setMeasurement('2026-10-01', 'waist', 84.5)
+    await setMeasurement('2026-10-01', 'body_fat', 15.2)
     await setWeighIn('2026-10-09', 80.15)
     await addMealPreset('Shake', { proteinG: 30, carbsG: 5, fatG: 2, kcal: 158 })
     await updateSettings({ weeklySessionTarget: 5, lastBackupAt: 1_760_000_000_000 })
@@ -81,9 +85,11 @@ describe('excel backup', () => {
     const wb = new ExcelJS.Workbook()
     await wb.xlsx.load(await buildBackupWorkbook())
     wb.removeWorksheet(wb.getWorksheet('Bodyweight')!.id)
+    wb.removeWorksheet(wb.getWorksheet('Measurements')!.id)
     const older = (await wb.xlsx.writeBuffer()) as ArrayBuffer
     const parsed = await parseBackupWorkbook(older)
     expect(parsed.tables.bodyweight).toEqual([])
+    expect(parsed.tables.measurements).toEqual([])
   })
 
   it('rejects files that are not Lift backups', async () => {

@@ -5,6 +5,8 @@ import { db } from '../../db/schema'
 import { deleteSet, updateSet } from '../../db/workouts'
 import { MUSCLE_LABELS } from '../../domain/muscles'
 import { matchPrevious } from '../../domain/previous'
+import { restsAfter, type SupersetInfo } from '../../domain/supersets'
+import { SupersetBadge, supersetCardClass } from '../../components/SupersetBadge'
 import type { Suggestion } from '../../domain/progression'
 import { formatClock, formatNumber } from '../../lib/format'
 import { startRest, unlockAudio } from '../../lib/restTimer'
@@ -20,6 +22,9 @@ interface Props {
   isActive: boolean
   isFirst: boolean
   isLast: boolean
+  superset?: SupersetInfo
+  onSupersetNext: () => void
+  onLeaveSuperset: () => void
   onAddSet: () => void
   onMove: (direction: -1 | 1) => void
   onRemove: () => void
@@ -57,13 +62,19 @@ export function ExerciseCard(props: Props) {
     const reps = current.reps ?? repsHint(current, prev)
     if (reps == null) return // nothing to log yet
     await updateSet(set.id, { done: true, weightKg: weightKg ?? 0, reps })
-    if (isActive) startRest(we.restSec)
+    // In a superset, go straight to the next exercise; rest after the last one.
+    if (isActive && restsAfter(props.superset)) startRest(we.restSec)
   }
 
   const previousFor = matchPrevious(sets, previous)
 
   return (
-    <section className="card px-3">
+    <section className={`card px-3 ${supersetCardClass(props.superset)}`}>
+      {props.superset?.groupId && (
+        <div className="mb-1 px-1">
+          <SupersetBadge info={props.superset} />
+        </div>
+      )}
       <div className="mb-2 flex items-start gap-2 px-1">
         <div className="min-w-0 flex-1">
           <Link to={`/exercise/${exercise.id}`} className="font-semibold text-accent">
@@ -195,6 +206,28 @@ export function ExerciseCard(props: Props) {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
+            {props.superset?.groupId && (
+              <button
+                className="btn-secondary col-span-2"
+                onClick={() => {
+                  props.onLeaveSuperset()
+                  setMenuOpen(false)
+                }}
+              >
+                Remove from superset
+              </button>
+            )}
+            {!props.isLast && props.superset?.position !== 'first' && props.superset?.position !== 'middle' && (
+              <button
+                className="btn-secondary col-span-2"
+                onClick={() => {
+                  props.onSupersetNext()
+                  setMenuOpen(false)
+                }}
+              >
+                🔗 Superset with next exercise
+              </button>
+            )}
             <button className="btn-secondary" disabled={props.isFirst} onClick={() => props.onMove(-1)}>
               ↑ Move up
             </button>

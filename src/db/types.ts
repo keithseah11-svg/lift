@@ -1,4 +1,6 @@
 import type { Equipment, Muscle } from '../domain/muscles'
+import type { MeasurementSite } from '../domain/measurements'
+import type { Pose } from '../domain/photos'
 
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure'
 
@@ -103,6 +105,27 @@ export interface BodyweightEntry {
   /** yyyy-MM-dd local date; one weigh-in per day */
   date: string
   kg: number
+}
+
+export interface Measurement {
+  id: string
+  /** yyyy-MM-dd */
+  date: string
+  site: MeasurementSite
+  /** cm, or % for body fat */
+  value: number
+}
+
+export interface ProgressPhoto {
+  id: string
+  /** yyyy-MM-dd */
+  date: string
+  pose: Pose
+  /** Compressed JPEG */
+  blob: Blob
+  width: number
+  height: number
+  createdAt: number
 }
 
 export interface MacroTarget {

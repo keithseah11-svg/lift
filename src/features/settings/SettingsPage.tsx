@@ -4,6 +4,7 @@ import { updateSettings, useSettings } from '../../db/settings'
 import { saveFile, XLSX_MIME } from '../../lib/share'
 import { PageHeader } from '../../components/PageHeader'
 import { NumberField } from '../../components/NumberField'
+import { PhotoBackup } from './PhotoBackup'
 
 type ExportState = { status: 'idle' } | { status: 'building' } | { status: 'ready'; data: ArrayBuffer; fileName: string } | { status: 'error'; message: string }
 
@@ -43,7 +44,7 @@ export function SettingsPage() {
       const { parseBackupWorkbook, restoreBackup } = await import('../../lib/excel')
       const backup = await parseBackupWorkbook(await file.arrayBuffer())
       const t = backup.tables
-      const summary = `${t.workouts.length} workouts, ${t.sets.length} sets, ${t.routines.length} routines, ${t.macroEntries.length} food entries, ${t.bodyweight.length} weigh-ins`
+      const summary = `${t.workouts.length} workouts, ${t.sets.length} sets, ${t.routines.length} routines, ${t.macroEntries.length} food entries, ${t.bodyweight.length} weigh-ins, ${t.measurements.length} measurements`
       if (!confirm(`Restore ${summary}?\n\nThis REPLACES all data currently in the app.`)) return
       await restoreBackup(backup)
       setImportMessage({ ok: true, text: `Restored ${summary}.` })
@@ -119,6 +120,8 @@ export function SettingsPage() {
           </label>
           {importMessage && <p className={`text-sm ${importMessage.ok ? 'text-good' : 'text-bad'}`}>{importMessage.text}</p>}
         </section>
+
+        <PhotoBackup />
 
         <section className="card space-y-2 text-sm">
           <h2 className="font-bold">Storage</h2>

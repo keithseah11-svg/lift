@@ -14,6 +14,9 @@ import {
 import { getActiveWorkout, startWorkout } from '../../db/workouts'
 import type { RoutineExercise } from '../../db/types'
 import { MUSCLE_LABELS } from '../../domain/muscles'
+import { supersetLayout, type SupersetInfo } from '../../domain/supersets'
+import { routineGroups } from '../../db/supersets'
+import { SupersetBadge, supersetCardClass } from '../../components/SupersetBadge'
 import { formatClock } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
 import { ExercisePicker } from '../../components/ExercisePicker'
@@ -42,6 +45,8 @@ export function RoutineEditorPage() {
     )
   }
   if (!routine || !items || !exerciseMap) return null
+
+  const layout = supersetLayout(items)
 
   const remove = async () => {
     if (!confirm(`Delete routine “${routine.name}”? Past workouts are kept.`)) return
@@ -78,6 +83,7 @@ export function RoutineEditorPage() {
               muscle={ex ? MUSCLE_LABELS[ex.primaryMuscle] : ''}
               isFirst={i === 0}
               isLast={i === items.length - 1}
+              superset={layout.get(item.id)}
             />
           )
         })}
@@ -100,14 +106,29 @@ export function RoutineEditorPage() {
   )
 }
 
-function RoutineItem({ item, name, muscle, isFirst, isLast }: { item: RoutineExercise; name: string; muscle: string; isFirst: boolean; isLast: boolean }) {
+function RoutineItem({
+  item,
+  name,
+  muscle,
+  isFirst,
+  isLast,
+  superset,
+}: {
+  item: RoutineExercise
+  name: string
+  muscle: string
+  isFirst: boolean
+  isLast: boolean
+  superset?: SupersetInfo
+}) {
   const update = (patch: Partial<RoutineExercise>) => updateRoutineExercise(item.id, patch)
   const fieldClass = 'h-10 w-full rounded-lg bg-surface-2 text-center font-semibold outline-none focus:ring-1 focus:ring-accent'
 
   return (
-    <section className="card space-y-3">
+    <section className={`card space-y-3 ${supersetCardClass(superset)}`}>
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
+          <SupersetBadge info={superset} />
           <h3 className="font-semibold text-accent">{name}</h3>
           <p className="text-xs text-muted">{muscle}</p>
         </div>
@@ -157,6 +178,18 @@ function RoutineItem({ item, name, muscle, isFirst, isLast }: { item: RoutineExe
         </select>
       </label>
       {item.repMax < item.repMin && <p className="text-xs text-warn">Rep max is below rep min.</p>}
+      <div className="flex gap-2">
+        {superset?.groupId && (
+          <button className="chip" onClick={() => routineGroups.unlink(item.id)}>
+            Remove from superset
+          </button>
+        )}
+        {!isLast && superset?.position !== 'first' && superset?.position !== 'middle' && (
+          <button className="chip" onClick={() => routineGroups.link(item.id)}>
+            🔗 Superset with next
+          </button>
+        )}
+      </div>
     </section>
   )
 }

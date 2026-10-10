@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './schema'
-import { addExerciseToWorkout, finishWorkout, getActiveWorkout, previousPerformance, startWorkout, updateSet } from './workouts'
+import { addExerciseToWorkout, finishWorkout, getActiveWorkout, moveWorkoutExercise, previousPerformance, startWorkout, updateSet } from './workouts'
+import { routineGroups } from './supersets'
+import { setMeasurement } from './measurements'
+import { supersetLayout } from '../domain/supersets'
 import { addRoutineExercise, createRoutine, updateRoutineExercise } from './routines'
 import { loadDetails, summarize } from './stats'
 
@@ -95,5 +98,44 @@ describe('progression in routines', () => {
     const second = await startWorkout(routineId)
     const next = await db.sets.where('workoutId').equals(second).sortBy('order')
     expect(next.map((s) => s.weightKg)).toEqual([62.5, 62.5, 62.5])
+  })
+})
+
+describe('supersets', () => {
+  it('carries routine supersets into the workout and cleans up after moves and removals', async () => {
+    const routineId = await createRoutine('Arms')
+    for (const id of ['barbell-curl', 'triceps-pushdown', 'db-lateral-raise']) await addRoutineExercise(routineId, await exercise(id))
+    const items = await db.routineExercises.where('routineId').equals(routineId).sortBy('order')
+    await routineGroups.link(items[0].id)
+    const linked = await db.routineExercises.where('routineId').equals(routineId).sortBy('order')
+    expect(linked[0].supersetGroup).not.toBeNull()
+    expect(linked[1].supersetGroup).toBe(linked[0].supersetGroup)
+    expect(linked[2].supersetGroup).toBeNull()
+
+    const workoutId = await startWorkout(routineId)
+    const wes = await db.workoutExercises.where('workoutId').equals(workoutId).sortBy('order')
+    expect(supersetLayout(wes).get(wes[0].id)).toMatchObject({ label: 'A', position: 'first' })
+    expect(supersetLayout(wes).get(wes[1].id)?.position).toBe('last')
+
+    // Moving the curl below the lateral raise splits the pair: both lose the group.
+    await moveWorkoutExercise(wes[0].id, 1)
+    await moveWorkoutExercise(wes[0].id, 1)
+    const moved = await db.workoutExercises.where('workoutId').equals(workoutId).toArray()
+    expect(moved.every((we) => we.supersetGroup === null)).toBe(true)
+
+    // Removing one exercise of a pair dissolves the superset.
+    await routineGroups.unlink(linked[0].id)
+    expect((await db.routineExercises.where('routineId').equals(routineId).toArray()).every((r) => r.supersetGroup === null)).toBe(true)
+  })
+})
+
+describe('measurements', () => {
+  it('keeps one reading per body part per day', async () => {
+    await setMeasurement('2026-10-01', 'waist', 85)
+    await setMeasurement('2026-10-01', 'waist', 84.5)
+    await setMeasurement('2026-10-01', 'chest', 102)
+    const rows = await db.measurements.toArray()
+    expect(rows).toHaveLength(2)
+    expect(rows.find((r) => r.site === 'waist')?.value).toBe(84.5)
   })
 })

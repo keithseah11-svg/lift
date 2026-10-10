@@ -19,6 +19,7 @@ import { EQUIPMENT, MUSCLES, MUSCLE_LABELS } from '../domain/muscles'
 import { setVolume, totalVolume } from '../domain/volume'
 import { sumMacros } from '../domain/macros'
 import { WEEKDAY_LABELS } from '../domain/week'
+import { MEASUREMENT_SITES, MEASUREMENT_SITE_IDS } from '../domain/measurements'
 
 type Kind = 'string' | 'number' | 'nullableNumber' | 'nullableString' | 'bool' | 'date' | 'nullableDate' | 'list'
 
@@ -57,6 +58,7 @@ const TABLES = {
   macroEntries: () => db.macroEntries,
   mealPresets: () => db.mealPresets,
   bodyweight: () => db.bodyweight,
+  measurements: () => db.measurements,
 }
 
 const muscle = z.enum(MUSCLES)
@@ -298,6 +300,25 @@ const SPECS = [
       { header: 'Weight (kg)', field: 'kg', kind: 'number', width: 12 },
     ],
   },
+  {
+    name: 'Measurements',
+    table: 'measurements',
+    optional: true,
+    schema: z.object({
+      id: z.string().min(1),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      site: z.enum(MEASUREMENT_SITE_IDS),
+      value: z.number().positive(),
+    }),
+    columns: [
+      { header: 'Date', field: 'date', kind: 'string', width: 12 },
+      { header: 'Body part', width: 14, display: (r) => MEASUREMENT_SITES.find((s) => s.id === r.site)?.label },
+      { header: 'Value', field: 'value', kind: 'number' },
+      { header: 'Unit', display: (r) => MEASUREMENT_SITES.find((s) => s.id === r.site)?.unit },
+      { header: 'Site', field: 'site', kind: 'string', width: 12 },
+      { header: 'ID', field: 'id', kind: 'string', width: 12 },
+    ],
+  },
 ] satisfies SheetSpec<any>[]
 
 const SETTINGS_SHEET = 'Settings'
@@ -407,7 +428,7 @@ export async function buildBackupWorkbook(): Promise<ArrayBuffer> {
   for (const spec of SPECS as SheetSpec<any>[]) {
     const rows: any[] = await TABLES[spec.table]().toArray()
     if (spec.table === 'sets') rows.sort((a, b) => compareSets(a, b, ctx))
-    if (spec.table === 'bodyweight') rows.sort((a, b) => a.date.localeCompare(b.date))
+    if (spec.table === 'bodyweight' || spec.table === 'measurements') rows.sort((a, b) => a.date.localeCompare(b.date))
     const ws = wb.addWorksheet(spec.name)
     ws.columns = spec.columns.map((c) => ({
       header: c.header,
