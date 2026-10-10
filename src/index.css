@@ -1,0 +1,78 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0b0d12;
+  --color-surface: #151922;
+  --color-surface-2: #1e2430;
+  --color-line: #2a3140;
+  --color-text: #eef1f6;
+  --color-muted: #8b94a7;
+  --color-accent: #4f8cff;
+  --color-accent-soft: #4f8cff26;
+  --color-good: #34c77b;
+  --color-good-soft: #34c77b1f;
+  --color-warn: #f2b13c;
+  --color-bad: #ef5a5a;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* iOS zooms into inputs smaller than 16px. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility card {
+  @apply rounded-2xl bg-surface p-4;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-semibold transition active:scale-[0.98] disabled:opacity-40;
+}
+@utility btn-primary {
+  @apply btn bg-accent text-white;
+}
+@utility btn-secondary {
+  @apply btn bg-surface-2 text-text;
+}
+@utility btn-danger {
+  @apply btn bg-bad/15 text-bad;
+}
+@utility btn-ghost {
+  @apply inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 font-semibold text-accent transition active:opacity-60 disabled:opacity-40;
+}
+@utility field {
+  @apply w-full rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-text outline-none placeholder:text-muted/70 focus:border-accent;
+}
+@utility label {
+  @apply mb-1 block text-xs font-medium tracking-wide text-muted uppercase;
+}
+@utility chip {
+  @apply rounded-full border border-line px-3 py-1 text-sm whitespace-nowrap text-muted;
+}
+@utility chip-active {
+  @apply rounded-full border border-accent bg-accent-soft px-3 py-1 text-sm whitespace-nowrap text-text;
+}
