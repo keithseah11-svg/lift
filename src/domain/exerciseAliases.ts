@@ -20,6 +20,8 @@ export const EXERCISE_ALIASES: Record<string, string[]> = {
   'pec-deck': ['Chest Fly (Machine)', 'Butterfly'],
   'face-pull': ['Rope Face Pull'],
   'trap-bar-deadlift': ['Hex Bar Deadlift'],
+  'cable-crunch': ['Kneeling Cable Crunch', 'Rope Crunch', 'Cable Ab Crunch'],
+  'machine-crunch': ['Ab Crunch Machine', 'Ab Machine', 'Abdominal Crunch (Machine)'],
 }
 
 export function exerciseSearchNames(e: { id: string; name: string }): string[] {
