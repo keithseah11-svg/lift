@@ -4,8 +4,8 @@ import { isBuiltinMuscle } from '../../domain/muscles'
 import { normalize } from '../../domain/search'
 
 describe('built-in exercise library', () => {
-  it('has 174 exercises with unique ids and names', () => {
-    expect(SEED_EXERCISES).toHaveLength(174)
+  it('has 177 exercises with unique ids and names', () => {
+    expect(SEED_EXERCISES).toHaveLength(177)
     expect(new Set(SEED_EXERCISES.map((e) => e.id)).size).toBe(SEED_EXERCISES.length)
     expect(new Set(SEED_EXERCISES.map((e) => normalize(e.name))).size).toBe(SEED_EXERCISES.length)
   })
@@ -17,5 +17,19 @@ describe('built-in exercise library', () => {
       expect(e.secondaryMuscles, e.name).not.toContain(e.primaryMuscle)
       expect(new Set(e.secondaryMuscles).size, e.name).toBe(e.secondaryMuscles.length)
     }
+  })
+})
+
+describe('exercise aliases', () => {
+  it('only reference real exercises and make abbreviations searchable', async () => {
+    const { EXERCISE_ALIASES, exerciseSearchNames } = await import('../../domain/exerciseAliases')
+    const { searchByName } = await import('../../domain/search')
+    const ids = new Set(SEED_EXERCISES.map((e) => e.id))
+    for (const id of Object.keys(EXERCISE_ALIASES)) expect(ids.has(id), id).toBe(true)
+    const find = (q: string) => searchByName(SEED_EXERCISES, q, exerciseSearchNames).map((e) => e.name)
+    expect(find('sldl').slice(0, 2).sort()).toEqual(['Stiff Leg Deadlift (Barbell)', 'Stiff Leg Deadlift (Dumbbell)'])
+    expect(find('kelso')).toEqual(['Kelso Shrug (Dumbbell)', 'Kelso Shrug (Barbell)'])
+    expect(find('ohp')[0]).toBe('Overhead Press (Barbell)')
+    expect(find('bss')[0]).toBe('Bulgarian Split Squat (Dumbbell)')
   })
 })

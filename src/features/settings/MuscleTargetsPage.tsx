@@ -13,6 +13,7 @@ import type { MuscleTarget, MuscleTargetOverrides, SetRange } from '../../domain
 import { searchByName } from '../../domain/search'
 import { PageHeader } from '../../components/PageHeader'
 import { NumberField } from '../../components/NumberField'
+import { exerciseSearchNames } from '../../domain/exerciseAliases'
 
 const numberClass =
   'h-9 w-14 rounded-lg bg-surface-2 text-center font-semibold outline-none focus:ring-1 focus:ring-accent disabled:opacity-30'
@@ -141,7 +142,7 @@ function SecondarySection({ countSecondary }: { countSecondary: boolean }) {
 
   const withSecondary = useMemo(() => (exercises ?? []).filter((e) => e.secondaryMuscles.length > 0), [exercises])
   const customised = withSecondary.filter((e) => e.countedSecondary != null)
-  const results = query.trim() ? searchByName(withSecondary, query, (e) => e.name).slice(0, 25) : []
+  const results = query.trim() ? searchByName(withSecondary, query, exerciseSearchNames).slice(0, 25) : []
 
   return (
     <section className="card space-y-3">

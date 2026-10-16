@@ -6,6 +6,7 @@ import { useMuscles } from '../../app/MusclesProvider'
 import { EQUIPMENT_LABELS } from '../../domain/muscles'
 import { searchByName } from '../../domain/search'
 import { PageHeader } from '../../components/PageHeader'
+import { exerciseSearchNames } from '../../domain/exerciseAliases'
 
 /** Every exercise in Lift: create your own, or edit any exercise's muscles. */
 export function ExerciseLibraryPage() {
@@ -15,7 +16,7 @@ export function ExerciseLibraryPage() {
   const [onlyMine, setOnlyMine] = useState(false)
 
   const mine = (exercises ?? []).filter((e) => e.custom)
-  const shown = searchByName(onlyMine ? mine : (exercises ?? []), query, (e) => e.name)
+  const shown = searchByName(onlyMine ? mine : (exercises ?? []), query, exerciseSearchNames)
 
   return (
     <div className="pb-6">

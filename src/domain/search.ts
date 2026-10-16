@@ -60,11 +60,24 @@ export function matchScore(name: string, query: string): number | null {
   return q.every((qt) => nameTokens.some((nt) => tokenMatches(qt, nt))) ? 1 : null
 }
 
-/** Filters and orders items by how well `name` matches; ties keep their order. */
-export function searchByName<T>(items: T[], query: string, name: (item: T) => string): T[] {
+/** Best score across several names for the same item (e.g. a name plus nicknames). */
+function bestScore(names: string | string[], query: string): number | null {
+  let best: number | null = null
+  for (const n of Array.isArray(names) ? names : [names]) {
+    const s = matchScore(n, query)
+    if (s != null && (best == null || s < best)) best = s
+  }
+  return best
+}
+
+/**
+ * Filters and orders items by how well their name (or any of their names)
+ * matches; ties keep their order.
+ */
+export function searchByName<T>(items: T[], query: string, name: (item: T) => string | string[]): T[] {
   if (!query.trim()) return items
   return items
-    .map((item, i) => ({ item, i, score: matchScore(name(item), query) }))
+    .map((item, i) => ({ item, i, score: bestScore(name(item), query) }))
     .filter((x): x is { item: T; i: number; score: number } => x.score != null)
     .sort((a, b) => a.score - b.score || a.i - b.i)
     .map((x) => x.item)

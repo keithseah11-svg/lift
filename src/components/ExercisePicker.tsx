@@ -7,6 +7,7 @@ import { useMuscles } from '../app/MusclesProvider'
 import { Sheet } from './Sheet'
 import { ExerciseForm } from './ExerciseForm'
 import { searchByName } from '../domain/search'
+import { exerciseSearchNames } from '../domain/exerciseAliases'
 
 interface Props {
   open: boolean
@@ -25,7 +26,7 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
     const byMuscle = (exercises ?? []).filter(
       (e) => !muscle || e.primaryMuscle === muscle || e.secondaryMuscles.includes(muscle),
     )
-    return searchByName(byMuscle, query, (e) => e.name)
+    return searchByName(byMuscle, query, exerciseSearchNames)
   }, [exercises, query, muscle])
 
   const pick = (e: Exercise) => {

@@ -9,6 +9,7 @@ import { formatKg } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
 import { searchByName } from '../../domain/search'
 import { ProgressTabs } from './ProgressTabs'
+import { exerciseSearchNames } from '../../domain/exerciseAliases'
 
 type Sort = 'strength' | 'recent' | 'name'
 
@@ -23,7 +24,7 @@ export function ExercisesPage() {
     .sort((a, b) =>
       sort === 'recent' ? b.lastAt - a.lastAt : sort === 'name' ? a.exercise.name.localeCompare(b.exercise.name) : 0,
     )
-  const matching = searchByName(shown, query, (r) => r.exercise.name)
+  const matching = searchByName(shown, query, (r) => exerciseSearchNames(r.exercise))
 
   return (
     <div>

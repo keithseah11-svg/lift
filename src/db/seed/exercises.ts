@@ -148,6 +148,9 @@ export const SEED_EXERCISES: Exercise[] = [
   ex('trap-bar-deadlift', 'Trap Bar Deadlift', 'other', 'quads', ['glutes', 'hamstrings', 'lower_back', 'traps'], 240),
   ex('good-morning', 'Good Morning (Barbell)', 'barbell', 'hamstrings', ['lower_back', 'glutes'], 150),
   ex('machine-shrug', 'Shrug (Machine)', 'machine', 'traps', [], 90),
+  // Kelso shrug: chest on an incline bench, squeeze the shoulder blades together (mid traps/rhomboids).
+  ex('kelso-shrug', 'Kelso Shrug (Dumbbell)', 'dumbbell', 'upper_back', ['traps', 'rear_delts'], 90),
+  ex('kelso-shrug-barbell', 'Kelso Shrug (Barbell)', 'barbell', 'upper_back', ['traps', 'rear_delts'], 90),
 
   // Shoulders
   ex('arnold-press', 'Arnold Press (Dumbbell)', 'dumbbell', 'front_delts', ['side_delts', 'triceps']),
@@ -205,6 +208,7 @@ export const SEED_EXERCISES: Exercise[] = [
 
   // Hamstrings & hinges
   ex('stiff-leg-deadlift', 'Stiff Leg Deadlift (Barbell)', 'barbell', 'hamstrings', ['glutes', 'lower_back'], 150),
+  ex('db-stiff-leg-deadlift', 'Stiff Leg Deadlift (Dumbbell)', 'dumbbell', 'hamstrings', ['glutes', 'lower_back']),
   ex('single-leg-rdl', 'Single Leg Romanian Deadlift (Dumbbell)', 'dumbbell', 'hamstrings', ['glutes'], 90),
   ex('smith-rdl', 'Romanian Deadlift (Smith Machine)', 'machine', 'hamstrings', ['glutes', 'lower_back']),
   ex('standing-leg-curl', 'Standing Leg Curl (Machine)', 'machine', 'hamstrings', [], 90),
