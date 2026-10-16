@@ -13,7 +13,7 @@ export const BODY_TYPES = [
 ] as const
 export type BodyType = (typeof BODY_TYPES)[number]['id']
 
-export const SKIN_TONES = ['#f6d5b8', '#e8b48f', '#c98e66', '#a86b45', '#7a4a2c', '#4f2e1c'] as const
+export const SKIN_TONES = ['#f6d5b8', '#e8b48f', '#c98e66', '#a86b45', '#7a4a2c', '#4f2e1c', '#ffffff'] as const
 
 export const HAIR_STYLES = [
   { id: 'short', label: 'Short' },
@@ -162,7 +162,7 @@ export const ITEMS: ShopItem[] = [
   item('wraps-bench', 'Bench Club Wraps', 'wrists', 'wraps', '#f2b13c', '#1b1e25', 'milestone', 'bench-100'),
 
   // Backgrounds
-  item('bg-plain', 'Plain', 'background', 'bg-plain', '#1e2430', '#2a3140', 'starter'),
+  item('bg-plain', 'Plain', 'background', 'bg-plain', '#f4efe6', '#e9e1d2', 'starter'),
   item('bg-gym', 'Gym Floor', 'background', 'bg-gym', '#262b36', '#4f8cff', 'rare', 15),
   item('bg-beach', 'Beach', 'background', 'bg-beach', '#7cc6f2', '#f2d99a', 'epic', 40),
   item('bg-neon', 'Neon Studio', 'background', 'bg-neon', '#160f2b', '#e47aa8', 'epic', 50),

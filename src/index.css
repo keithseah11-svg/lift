@@ -78,87 +78,53 @@ input[type='number']::-webkit-outer-spin-button {
 }
 
 /* ---------------------------------------------------------- avatar motion */
-.av-anim .av-body {
-  transform-box: view-box;
-  transform-origin: 100px 260px;
-  animation: av-breathe 2.6s ease-in-out infinite;
+/* Pixel sprite: moves in whole pixels, like a game character. */
+.av-eyes-closed {
+  opacity: 0;
 }
 .av-anim .av-head {
-  transform-box: view-box;
-  transform-origin: 100px 150px;
-  animation: av-headbob 2.6s ease-in-out infinite;
+  animation: av-bob 1.2s steps(1, end) infinite;
 }
-.av-anim .av-eye {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: av-blink 4.2s infinite;
+.av-anim .av-arms {
+  animation: av-bob 1.2s steps(1, end) infinite reverse;
 }
-.av-anim .av-arm-l,
-.av-anim .av-arm-r {
-  transform-box: fill-box;
-  transform-origin: 50% 0;
-  animation: av-swing 2.6s ease-in-out infinite;
+.av-anim .av-eyes-open {
+  animation: av-blink-open 4.2s steps(1, end) infinite;
 }
-.av-anim .av-arm-r {
-  animation-direction: reverse;
+.av-anim .av-eyes-closed {
+  animation: av-blink-closed 4.2s steps(1, end) infinite;
 }
-.av-anim .av-shadow {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: av-shadow 2.6s ease-in-out infinite;
+.av-anim.av-cheer .av-char {
+  animation: av-hop 0.6s steps(1, end) 3;
 }
-.av-anim.av-cheer .av-body {
-  animation: av-hop 0.8s ease-in-out 2;
-}
-.av-anim.av-cheer .av-arm-l {
-  animation: av-wave-l 0.8s ease-in-out 2;
-}
-.av-anim.av-cheer .av-arm-r {
-  animation: av-wave-r 0.8s ease-in-out 2;
-}
-.av-anim.av-cheer .av-shadow {
-  animation: av-shadow-hop 0.8s ease-in-out 2;
+.av-anim.av-cheer .av-arms {
+  animation: av-flap 0.3s steps(1, end) 6;
 }
 
-@keyframes av-breathe {
-  0%, 100% { transform: scale(1, 1); }
-  50% { transform: scale(1.015, 0.985); }
+@keyframes av-bob {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(1px); }
 }
-@keyframes av-headbob {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  25% { transform: translateY(1px) rotate(-2.5deg); }
-  50% { transform: translateY(2.5px) rotate(0deg); }
-  75% { transform: translateY(1px) rotate(2.5deg); }
+@keyframes av-blink-open {
+  0% { opacity: 1; }
+  94% { opacity: 0; }
+  97% { opacity: 1; }
 }
-@keyframes av-blink {
-  0%, 93%, 100% { transform: scaleY(1); }
-  96% { transform: scaleY(0.1); }
-}
-@keyframes av-swing {
-  0%, 100% { transform: rotate(-4deg); }
-  50% { transform: rotate(5deg); }
-}
-@keyframes av-shadow {
-  0%, 100% { transform: scaleX(1); }
-  50% { transform: scaleX(1.04); }
+@keyframes av-blink-closed {
+  0% { opacity: 0; }
+  94% { opacity: 1; }
+  97% { opacity: 0; }
 }
 @keyframes av-hop {
-  0%, 100% { transform: translateY(0) scale(1, 1); }
-  15% { transform: translateY(0) scale(1.06, 0.92); }
-  45% { transform: translateY(-26px) scale(0.96, 1.05); }
-  75% { transform: translateY(0) scale(1.05, 0.95); }
+  0% { transform: translateY(0); }
+  20% { transform: translateY(-2px); }
+  40% { transform: translateY(-4px); }
+  60% { transform: translateY(-2px); }
+  80% { transform: translateY(0); }
 }
-@keyframes av-wave-l {
-  0%, 100% { transform: rotate(0deg); }
-  45% { transform: rotate(60deg); }
-}
-@keyframes av-wave-r {
-  0%, 100% { transform: rotate(0deg); }
-  45% { transform: rotate(-60deg); }
-}
-@keyframes av-shadow-hop {
-  0%, 100% { transform: scale(1); opacity: 0.2; }
-  45% { transform: scale(0.7); opacity: 0.1; }
+@keyframes av-flap {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .av-anim * { animation: none !important; }

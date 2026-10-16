@@ -1,74 +1,94 @@
-import type { Key, ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { ITEMS_BY_ID, type AvatarLook, type BodyType, type ShopItem, type Slot } from '../../domain/game/catalog'
 
 /**
- * The lifter avatar: a chibi figure (big head, stubby limbs, soft outlines)
- * drawn in layers. Every clothing item is drawn from the same body
- * measurements, so items fit all four body types. viewBox 0 0 200 300,
- * centre line x = 100. Animations live in index.css (.av-*).
+ * The lifter avatar: a pixel-art sprite on a 48 × 72 grid. Every part is a
+ * pixel mask painted with a fill colour and a 1-pixel ink outline (the
+ * mask's own edge), then drawn as one SVG path per colour. Clothes are
+ * built from the body's masks, so they fit all four body types.
+ * Animations live in index.css (.av-*).
  */
 
-interface Body {
-  shoulder: number // shoulder width
-  waist: number
-  hip: number
-  arm: number // arm thickness
-  leg: number // leg thickness
-}
+const W = 48
+const H = 72
+const CX = 24 // centre line sits between pixel 23 and pixel 24
+const INK = '#1b1820'
 
-const BODIES: Record<BodyType, Body> = {
-  lean: { shoulder: 50, waist: 46, hip: 50, arm: 13, leg: 15 },
-  athletic: { shoulder: 60, waist: 50, hip: 52, arm: 15, leg: 17 },
-  muscular: { shoulder: 74, waist: 56, hip: 56, arm: 19, leg: 20 },
-  curvy: { shoulder: 52, waist: 46, hip: 64, arm: 14, leg: 19 },
-}
+// ---------------------------------------------------------------- masks
 
-const CX = 100
-const HEAD_CY = 98
-const HEAD_RX = 58
-const HEAD_RY = 54
-const EYE_Y = 106
-const SHOULDER_Y = 146
-const WAIST_Y = 192
-const HIP_Y = 210
-const ARM_TOP = 154
-const ARM_LEN = 42
-const LEG_TOP = 204
-const LEG_END = 242
-const GROUND = 260
+type Mask = Set<number>
+const idx = (x: number, y: number) => y * W + x
 
-const INK = '#3a2e3f'
-const OL = { stroke: INK, strokeWidth: 2.5, strokeLinejoin: 'round' as const }
-
-interface Geo extends Body {
-  armX: [number, number] // shoulder x of left/right arm
-  legX: [number, number] // centre x of left/right leg
-}
-
-function geometry(type: BodyType): Geo {
-  const b = BODIES[type]
-  const armOffset = b.shoulder / 2 - b.arm / 2 + 3
-  const legOffset = Math.max(b.hip / 4, b.leg / 2 + 3)
-  return { ...b, armX: [CX - armOffset, CX + armOffset], legX: [CX - legOffset, CX + legOffset] }
-}
-
-/** Rounded torso outline, grown by `pad` for clothes. `inset` cuts sleeveless arm holes. */
-function torsoPath(g: Geo, pad = 0, bottom = HIP_Y, inset = 0): string {
-  const s = g.shoulder / 2 + pad
-  const w = g.waist / 2 + pad
-  const h = g.hip / 2 + pad
-  const top = SHOULDER_Y
-  const mid = (top + WAIST_Y) / 2 + 8
-  const lower = `Q ${CX + h} ${WAIST_Y + 6} ${CX + h} ${bottom - 6} Q ${CX + h} ${bottom} ${CX + h - 6} ${bottom} L ${CX - h + 6} ${bottom} Q ${CX - h} ${bottom} ${CX - h} ${bottom - 6} Q ${CX - h} ${WAIST_Y + 6} ${CX - w} ${WAIST_Y}`
-  if (inset) {
-    return `M ${CX - s + inset} ${top} L ${CX + s - inset} ${top} Q ${CX + w - 2} ${top + inset} ${CX + w} ${WAIST_Y} ${lower} Q ${CX - w + 2} ${top + inset} ${CX - s + inset} ${top} Z`
+function maskWhere(test: (x: number, y: number) => boolean, x0 = 0, y0 = 0, x1 = W - 1, y1 = H - 1): Mask {
+  const m: Mask = new Set()
+  for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) {
+    for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) if (test(x, y)) m.add(idx(x, y))
   }
-  return `M ${CX - s} ${top + 12} Q ${CX - s} ${top} ${CX - s + 12} ${top} L ${CX + s - 12} ${top} Q ${CX + s} ${top} ${CX + s} ${top + 12} Q ${CX + w} ${mid} ${CX + w} ${WAIST_Y} ${lower} Q ${CX - w} ${mid} ${CX - s} ${top + 12} Z`
+  return m
+}
+const rectM = (x0: number, y0: number, x1: number, y1: number) => maskWhere(() => true, x0, y0, x1, y1)
+const ellipseM = (cx: number, cy: number, rx: number, ry: number) =>
+  maskWhere((x, y) => ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1)
+const union = (...ms: Mask[]): Mask => new Set(ms.flatMap((m) => [...m]))
+const minus = (a: Mask, b: Mask): Mask => new Set([...a].filter((i) => !b.has(i)))
+const where = (m: Mask, test: (x: number, y: number) => boolean): Mask => new Set([...m].filter((i) => test(i % W, Math.floor(i / W))))
+const mirror = (m: Mask): Mask => new Set([...m].map((i) => idx(W - 1 - (i % W), Math.floor(i / W))))
+const shift = (m: Mask, dx: number, dy: number): Mask =>
+  new Set([...m].map((i) => [(i % W) + dx, Math.floor(i / W) + dy]).filter(([x, y]) => x >= 0 && x < W && y >= 0 && y < H).map(([x, y]) => idx(x, y)))
+/** Grow a mask by one pixel in every direction (4-neighbours). */
+const grow = (m: Mask): Mask => union(m, shift(m, 1, 0), shift(m, -1, 0), shift(m, 0, 1), shift(m, 0, -1))
+const isEdge = (m: Mask, i: number) => {
+  const x = i % W
+  const y = Math.floor(i / W)
+  return x === 0 || y === 0 || x === W - 1 || y === H - 1 || !m.has(i - 1) || !m.has(i + 1) || !m.has(i - W) || !m.has(i + W)
+}
+const inside = (m: Mask): Mask => new Set([...m].filter((i) => !isEdge(m, i)))
+const dotsM = (pts: [number, number][]): Mask => new Set(pts.map(([x, y]) => idx(x, y)))
+const symDots = (pts: [number, number][]): Mask => union(dotsM(pts), mirror(dotsM(pts)))
+
+class Canvas {
+  px: (string | undefined)[] = new Array(W * H)
+  /** Fill a mask; its edge pixels get the ink colour (null = no outline). */
+  paint(m: Mask, fill: string, ink: string | null = INK) {
+    for (const i of m) this.px[i] = ink && isEdge(m, i) ? ink : fill
+    return this
+  }
+  /** Darken whatever is already there (shadows). */
+  darken(m: Mask, f: number) {
+    for (const i of m) {
+      const c = this.px[i]
+      if (c?.startsWith('#')) this.px[i] = shade(c, -f)
+    }
+    return this
+  }
+  dots(m: Mask, color: string) {
+    for (const i of m) this.px[i] = color
+    return this
+  }
+  /** One path per colour, run-length encoded by row. */
+  render(): ReactNode {
+    const paths = new Map<string, string>()
+    for (let y = 0; y < H; y++) {
+      let x = 0
+      while (x < W) {
+        const c = this.px[idx(x, y)]
+        if (!c) {
+          x++
+          continue
+        }
+        let len = 1
+        while (x + len < W && this.px[idx(x + len, y)] === c) len++
+        paths.set(c, (paths.get(c) ?? '') + `M${x} ${y}h${len}v1h-${len}z`)
+        x += len
+      }
+    }
+    return [...paths].map(([c, d]) => <path key={c} d={d} fill={c} />)
+  }
 }
 
 /** Darken/lighten a hex colour by a factor (-1..1). */
 function shade(hex: string, f: number): string {
-  const n = parseInt(hex.slice(1), 16)
+  const n = parseInt(hex.slice(1, 7), 16)
   const ch = (v: number) => Math.round(f < 0 ? v * (1 + f) : v + (255 - v) * f)
   const r = ch((n >> 16) & 255)
   const g = ch((n >> 8) & 255)
@@ -76,384 +96,388 @@ function shade(hex: string, f: number): string {
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`
 }
 
-const rect = (x: number, y: number, w: number, h: number, fill: string, rx = 0, extra: Record<string, unknown> = {}) => {
-  const { key, ...rest } = extra
-  return <rect key={key as Key | undefined} x={x} y={y} width={w} height={h} rx={rx} fill={fill} {...rest} />
+// ---------------------------------------------------------------- body
+
+const TORSO_TOP = 29
+const TORSO_BOTTOM = 55
+const FEET = 61
+
+interface BodySpec {
+  /** Torso half-width at key rows, interpolated in between. */
+  profile: [number, number][]
+  arm: number
+}
+
+const BODIES: Record<BodyType, BodySpec> = {
+  lean: { profile: [[29, 5], [31, 7], [33, 8], [55, 9]], arm: 3 },
+  athletic: { profile: [[29, 5], [31, 8], [34, 10], [48, 10], [55, 11]], arm: 4 },
+  muscular: { profile: [[29, 6], [31, 10], [33, 13], [38, 13], [46, 10], [55, 11]], arm: 5 },
+  curvy: { profile: [[29, 5], [31, 8], [35, 11], [46, 13], [52, 13], [55, 12]], arm: 4 },
+}
+
+interface Body {
+  hw: (y: number) => number
+  torso: Mask
+  arms: [Mask, Mask]
+  legs: [Mask, Mask]
+  head: Mask
+}
+
+function buildBody(type: BodyType): Body {
+  const { profile, arm } = BODIES[type]
+  const hw = (y: number) => {
+    if (y <= profile[0][0]) return profile[0][1]
+    for (let k = 1; k < profile.length; k++) {
+      const [y0, w0] = profile[k - 1]
+      const [y1, w1] = profile[k]
+      if (y <= y1) return Math.round(w0 + ((w1 - w0) * (y - y0)) / (y1 - y0))
+    }
+    return profile[profile.length - 1][1]
+  }
+  const torso = maskWhere((x, y) => x >= CX - hw(y) && x < CX + hw(y), 0, TORSO_TOP, W - 1, TORSO_BOTTOM)
+
+  // Arms hug the body: one pixel outside its edge, `arm` pixels inside, so
+  // their outline draws the arm line inside the silhouette (Charlie style).
+  const armL = maskWhere((x, y) => {
+    const edge = CX - hw(y)
+    const x0 = edge - 1
+    const x1 = edge + arm - 1
+    const corner = y === 48 && (x === x0 || x === x1)
+    return x >= x0 && x <= x1 && !corner
+  }, 0, 31, W - 1, 48)
+
+  // Stubby legs; the left one includes the centre column so the two share one seam.
+  const legOut = hw(TORSO_BOTTOM) - 2
+  const legL = maskWhere((x) => x >= CX - legOut && x <= CX, 0, TORSO_BOTTOM - 1, W - 1, FEET)
+  const legR = mirror(legL)
+
+  return { hw, torso, arms: [armL, mirror(armL)], legs: [legL, legR], head: ellipseM(CX, 21.5, 9.5, 8.8) }
+}
+
+function bodyDetails(type: BodyType, c: Canvas, skin: string) {
+  const line = shade(skin, -0.45)
+  if (type === 'muscular') {
+    c.dots(symDots([[CX - 7, 36], [CX - 6, 37], [CX - 5, 37], [CX - 4, 37], [CX - 3, 37], [CX - 2, 36]]), line)
+    c.dots(union(rectM(CX - 1, 40, CX - 1, 49), rectM(CX - 3, 42, CX + 2, 42), rectM(CX - 3, 45, CX + 2, 45)), line)
+  } else if (type === 'curvy') {
+    c.dots(symDots([[CX - 5, 44], [CX - 4, 45], [CX - 3, 46], [CX - 2, 46], [CX - 1, 46]]), line)
+    c.dots(rectM(CX - 1, 49, CX, 49), line)
+  } else {
+    c.dots(rectM(CX - 1, 48, CX, 48), line)
+  }
 }
 
 // ---------------------------------------------------------------- items
 
-function drawBackground(item: ShopItem): ReactNode {
-  const { main, accent } = item
-  switch (item.style) {
-    case 'bg-gym':
-      return (
-        <>
-          {rect(0, 0, 200, 300, main)}
-          {rect(0, 248, 200, 52, shade(main, -0.35))}
-          {rect(20, 60, 160, 6, shade(main, 0.15), 3)}
-          {rect(14, 46, 12, 34, accent, 3)}
-          {rect(174, 46, 12, 34, accent, 3)}
-          {rect(30, 248, 140, 2, shade(accent, -0.2))}
-        </>
-      )
-    case 'bg-beach':
-      return (
-        <>
-          {rect(0, 0, 200, 300, main)}
-          <circle cx={164} cy={40} r={18} fill="#ffe27a" />
-          {rect(0, 206, 200, 42, '#3aa3d9')}
-          {rect(0, 244, 200, 56, accent)}
-        </>
-      )
-    case 'bg-neon':
-      return (
-        <>
-          {rect(0, 0, 200, 300, main)}
-          {[40, 80, 120, 160].map((y) => rect(0, y, 200, 1.5, shade(accent, -0.3), 0, { key: y, opacity: 0.6 }))}
-          <circle cx={100} cy={140} r={88} fill="none" stroke={accent} strokeWidth={4} opacity={0.85} />
-          <circle cx={100} cy={140} r={94} fill="none" stroke="#4f8cff" strokeWidth={2} opacity={0.6} />
-        </>
-      )
-    case 'bg-podium':
-      return (
-        <>
-          {rect(0, 0, 200, 300, main)}
-          <path d="M 100 0 L 40 300 L 160 300 Z" fill={shade(accent, -0.5)} opacity={0.35} />
-          {rect(30, 258, 140, 42, accent, 4)}
-          <text x={100} y={290} textAnchor="middle" fontSize={20} fontWeight={800} fill={shade(accent, -0.6)}>
-            1
-          </text>
-        </>
-      )
-    case 'bg-iron':
-      return (
-        <>
-          {rect(0, 0, 200, 300, main)}
-          <path d="M 0 300 L 0 210 Q 50 180 100 210 Q 150 240 200 200 L 200 300 Z" fill={accent} opacity={0.55} />
-          <path d="M 0 300 L 0 246 Q 60 220 120 246 Q 160 262 200 240 L 200 300 Z" fill={shade(accent, -0.3)} opacity={0.8} />
-        </>
-      )
-    default:
-      return (
-        <>
-          {rect(0, 0, 200, 300, main)}
-          <circle cx={100} cy={150} r={92} fill={accent} />
-        </>
-      )
+function drawBackground(c: Canvas, item: ShopItem | undefined) {
+  const all = rectM(0, 0, W - 1, H - 1)
+  if (!item) {
+    c.paint(all, 'var(--color-surface-2)', null)
+  } else {
+    const { main, accent } = item
+    c.paint(all, main, null)
+    switch (item.style) {
+      case 'bg-gym':
+        c.paint(rectM(0, 60, W - 1, H - 1), shade(main, -0.35), null)
+        c.paint(rectM(4, 10, 43, 11), shade(main, 0.25), null)
+        c.paint(rectM(3, 6, 5, 15), accent)
+        c.paint(rectM(42, 6, 44, 15), accent)
+        break
+      case 'bg-beach':
+        c.paint(ellipseM(38, 10, 4, 4), '#ffe27a', null)
+        c.paint(rectM(0, 46, W - 1, 56), '#3aa3d9', null)
+        c.dots(where(rectM(0, 47, W - 1, 55), (x, y) => (x + y * 3) % 9 === 0), '#8fd0f2')
+        c.paint(rectM(0, 57, W - 1, H - 1), accent, null)
+        break
+      case 'bg-neon':
+        for (const y of [12, 24, 36, 48]) c.paint(rectM(0, y, W - 1, y), shade(accent, -0.5), null)
+        c.paint(minus(ellipseM(CX, 36, 22.5, 22.5), ellipseM(CX, 36, 21.5, 21.5)), '#4f8cff', null)
+        c.paint(minus(ellipseM(CX, 36, 20.5, 20.5), ellipseM(CX, 36, 19.5, 19.5)), accent, null)
+        break
+      case 'bg-podium':
+        c.paint(maskWhere((x, y) => Math.abs(x + 0.5 - CX) < 6 + y * 0.25), '#2c2a22', null)
+        c.paint(rectM(8, 62, 39, H - 1), accent)
+        c.dots(union(rectM(23, 65, 24, 69), dotsM([[22, 66]]), rectM(22, 69, 25, 69)), shade(accent, -0.55))
+        break
+      case 'bg-iron':
+        c.paint(maskWhere((x, y) => y > 46 + 4 * Math.sin(x / 6)), accent, null)
+        c.paint(maskWhere((x, y) => y > 58 + 3 * Math.sin(x / 5 + 2)), shade(accent, -0.3), null)
+        break
+      default: // plain
+        c.paint(ellipseM(CX, 38, 21, 21), accent, null)
+        c.paint(rectM(0, 62, W - 1, H - 1), shade(main, -0.06), null)
+    }
+  }
+  c.darken(ellipseM(CX, 62.5, 12, 1.4), 0.18)
+}
+
+function drawHairBack(c: Canvas, look: AvatarLook) {
+  const color = look.hairColor
+  switch (look.hairStyle) {
+    case 'long':
+      c.paint(where(ellipseM(CX, 26, 11.5, 14), (_, y) => y >= 18), color)
+      break
+    case 'ponytail':
+      c.paint(ellipseM(35, 27, 2.8, 6), color)
+      c.paint(rectM(33, 20, 34, 21), '#e47aa8')
+      break
+    case 'bun':
+      c.paint(ellipseM(CX, 12, 3.5, 3.5), color)
+      break
+    case 'curly':
+      c.paint(where(ellipseM(CX, 21, 11.5, 11), (_, y) => y <= 26), color)
+      break
   }
 }
 
-function drawBottom(item: ShopItem, g: Geo): ReactNode {
+function drawShoes(c: Canvas, b: Body, item: ShopItem) {
+  const top = item.style === 'hightops' ? 56 : 58
+  for (const leg of b.legs) {
+    const foot = where(grow(leg), (_, y) => y >= top && y <= FEET)
+    c.paint(foot, item.main)
+    c.dots(where(inside(foot), (_, y) => y === FEET - 1), item.accent)
+    if (item.style === 'lifters') c.dots(where(inside(foot), (_, y) => y === 59), '#eef1f6')
+  }
+}
+
+function drawBottom(c: Canvas, b: Body, item: ShopItem) {
   const { main, accent } = item
-  const [lx, rx] = g.legX
-  const w = g.waist / 2 + 1
+  const hip = where(b.torso, (_, y) => y >= 50)
+  const legOut = b.hw(TORSO_BOTTOM) - 1
   if (item.style === 'shorts') {
-    const ho = Math.max(g.hip / 2, rx - CX + g.leg / 2) + 4
-    const hem = LEG_TOP + 20
-    return (
-      <>
-        <path
-          d={`M ${CX - w} ${WAIST_Y + 2} L ${CX + w} ${WAIST_Y + 2} Q ${CX + ho} ${WAIST_Y + 4} ${CX + ho} ${HIP_Y} L ${CX + ho + 1} ${hem} L ${CX + 2} ${hem} L ${CX} ${LEG_TOP + 10} L ${CX - 2} ${hem} L ${CX - ho - 1} ${hem} L ${CX - ho} ${HIP_Y} Q ${CX - ho} ${WAIST_Y + 4} ${CX - w} ${WAIST_Y + 2} Z`}
-          fill={main}
-          {...OL}
-        />
-        {rect(CX - ho - 1, hem - 5, ho - 3, 4, accent, 1)}
-        {rect(CX + 4, hem - 5, ho - 3, 4, accent, 1)}
-      </>
-    )
+    const m = union(hip, ...b.legs.map((l) => where(l, (_, y) => y <= 57)))
+    c.paint(m, main)
+    c.dots(where(inside(m), (_, y) => y === 56), accent)
+    c.dots(rectM(CX - 1, 55, CX - 1, 57), INK)
+    return
   }
-  const wd = item.style === 'leggings' ? g.leg + 2 : g.leg + 6
-  const ho = Math.max(g.hip / 2 + 2, rx - CX + wd / 2)
-  const end = LEG_END + 4
-  return (
-    <>
-      <path
-        d={`M ${CX - w} ${WAIST_Y + 2} L ${CX + w} ${WAIST_Y + 2} Q ${CX + ho} ${WAIST_Y + 4} ${CX + ho} ${HIP_Y} L ${rx + wd / 2} ${end} L ${rx - wd / 2} ${end} L ${CX + 1} ${LEG_TOP + 14} L ${CX - 1} ${LEG_TOP + 14} L ${lx + wd / 2} ${end} L ${lx - wd / 2} ${end} L ${CX - ho} ${HIP_Y} Q ${CX - ho} ${WAIST_Y + 4} ${CX - w} ${WAIST_Y + 2} Z`}
-        fill={main}
-        {...OL}
-      />
-      {item.style === 'joggers' && g.legX.map((x, i) => rect(x - wd / 2 - 1, end - 7, wd + 2, 8, shade(main, -0.25), 3, { key: i, ...OL }))}
-      {item.style === 'trackpants' && (
-        <path
-          d={`M ${CX - ho + 3} ${HIP_Y} L ${lx - wd / 2 + 3} ${end - 1} M ${CX + ho - 3} ${HIP_Y} L ${rx + wd / 2 - 3} ${end - 1}`}
-          stroke={accent}
-          strokeWidth={3}
-          strokeLinecap="round"
-        />
-      )}
-    </>
-  )
+  const m = union(hip, ...b.legs.map((l) => where(l, (_, y) => y <= 59)))
+  c.paint(m, main)
+  c.dots(rectM(CX - 1, 55, CX - 1, 59), INK)
+  if (item.style === 'joggers') c.dots(where(inside(m), (_, y) => y === 58), shade(main, -0.3))
+  if (item.style === 'trackpants') c.dots(symDots([...Array(8)].map((_, k) => [CX - legOut + 1, 51 + k] as [number, number])), accent)
 }
 
-function drawShoes(item: ShopItem, g: Geo): ReactNode {
-  const { main, accent } = item
-  return g.legX.map((x, i) => {
-    const fx = x + (i === 0 ? -3 : 3)
-    return (
-      <g key={i}>
-        {item.style === 'hightops' && rect(x - g.leg / 2 - 2, LEG_END - 10, g.leg + 4, 16, main, 5, OL)}
-        <ellipse cx={fx} cy={LEG_END + 7} rx={g.leg / 2 + 7} ry={9} fill={main} {...OL} />
-        {rect(fx - g.leg / 2 - 5, LEG_END + 11, g.leg + 10, 3.5, accent, 1.5)}
-        {item.style === 'lifters' && rect(fx - g.leg / 2 - 1, LEG_END + 1, g.leg + 2, 3.5, '#eef1f6', 1.5)}
-        {item.style === 'sneakers' && <path d={`M ${fx - 4} ${LEG_END + 4} L ${fx + 4} ${LEG_END + 8}`} stroke={accent} strokeWidth={2.5} strokeLinecap="round" />}
-      </g>
-    )
-  })
-}
-
-/** Body part of a top; sleeves are drawn with the arms so they swing together. */
-function drawTop(item: ShopItem, g: Geo): ReactNode {
-  const { main, accent } = item
+function topMask(b: Body, item: ShopItem): Mask {
+  const dx = (x: number) => Math.abs(x + 0.5 - CX)
   switch (item.style) {
     case 'tank':
-    case 'stringer': {
-      const stringer = item.style === 'stringer'
-      return (
-        <>
-          <path d={torsoPath(g, 1, HIP_Y - 4, stringer ? 18 : 11)} fill={main} {...OL} />
-          {rect(CX - g.hip / 2 + 2, HIP_Y - 10, g.hip - 4, 2.5, accent, 1)}
-        </>
-      )
+      return where(b.torso, (x, y) => y <= 50 && !(y < 36 && dx(x) > b.hw(y) - 3))
+    case 'stringer':
+      return where(b.torso, (x, y) => y <= 50 && !(y < 34 && dx(x) > 3) && !(y < 41 && dx(x) > b.hw(y) - 4))
+    case 'compression':
+      return where(b.torso, (_, y) => y <= 51)
+    case 'hoodie':
+    case 'jacket':
+      return where(grow(b.torso), (_, y) => y >= TORSO_TOP && y <= 52)
+    default:
+      return where(b.torso, (_, y) => y <= 50)
+  }
+}
+
+function drawTop(c: Canvas, b: Body, item: ShopItem) {
+  const { main, accent } = item
+  const m = topMask(b, item)
+  c.paint(m, main)
+  const body = inside(m)
+  switch (item.style) {
+    case 'tank':
+    case 'stringer':
+      c.dots(where(body, (_, y) => y === 48), accent)
+      break
+    case 'compression':
+      c.dots(where(body, (_, y) => y === 36), accent)
+      break
+    case 'hoodie':
+      c.paint(rectM(CX - 4, 45, CX + 3, 49), shade(main, -0.15))
+      c.dots(union(rectM(CX - 2, 31, CX - 2, 35), rectM(CX + 1, 31, CX + 1, 35)), accent)
+      break
+    case 'jacket':
+      c.dots(where(body, (x, y) => x === CX - 1 && y > 31), accent)
+      c.dots(where(body, (x, y) => y === 38 && x !== CX - 1), accent)
+      break
+    default:
+      c.dots(where(body, (_, y) => y === 49), shade(main, -0.2))
+  }
+}
+
+/** Hood bunched behind the neck, drawn before the torso. */
+function drawHood(c: Canvas, b: Body, item: ShopItem) {
+  if (item.style === 'hoodie') c.paint(ellipseM(CX, 30, b.hw(31) + 1.5, 3.5), shade(item.main, -0.2))
+}
+
+function drawSleeves(c: Canvas, b: Body, item: ShopItem) {
+  for (const arm of b.arms) {
+    switch (item.style) {
+      case 'tee':
+        c.paint(where(arm, (_, y) => y <= 37), item.main)
+        break
+      case 'compression':
+        c.paint(where(arm, (_, y) => y <= 45), item.main)
+        break
+      case 'hoodie': {
+        const s = where(grow(arm), (_, y) => y >= 31 && y <= 46)
+        c.paint(s, item.main)
+        c.dots(where(inside(s), (_, y) => y === 45), shade(item.main, -0.25))
+        break
+      }
+      case 'jacket': {
+        const s = where(grow(arm), (_, y) => y >= 31 && y <= 46)
+        c.paint(s, item.main)
+        c.dots(where(inside(s), (_, y) => y === 39), item.accent)
+        break
+      }
     }
-    case 'compression':
-      return (
-        <>
-          <path d={torsoPath(g, 1, HIP_Y - 4)} fill={main} {...OL} />
-          {rect(CX - g.shoulder / 2 + 4, SHOULDER_Y + 16, g.shoulder - 8, 3.5, accent, 1)}
-        </>
-      )
-    case 'hoodie':
-      return (
-        <>
-          <path d={torsoPath(g, 3, HIP_Y + 2)} fill={main} {...OL} />
-          {rect(CX - g.waist / 2 + 4, 182, g.waist - 8, 16, shade(main, -0.15), 6, OL)}
-          <path d={`M ${CX - 6} ${SHOULDER_Y + 6} L ${CX - 6} ${SHOULDER_Y + 24} M ${CX + 6} ${SHOULDER_Y + 6} L ${CX + 6} ${SHOULDER_Y + 24}`} stroke={accent} strokeWidth={2.5} strokeLinecap="round" />
-        </>
-      )
-    case 'jacket':
-      return (
-        <>
-          <path d={torsoPath(g, 3, HIP_Y + 1)} fill={main} {...OL} />
-          <path d={`M ${CX} ${SHOULDER_Y + 6} L ${CX} ${HIP_Y}`} stroke={accent} strokeWidth={2.5} />
-          <path d={`M ${CX - g.shoulder / 2} ${SHOULDER_Y + 22} L ${CX - 4} ${SHOULDER_Y + 22} M ${CX + 4} ${SHOULDER_Y + 22} L ${CX + g.shoulder / 2} ${SHOULDER_Y + 22}`} stroke={accent} strokeWidth={3} />
-        </>
-      )
-    default: // tee
-      return <path d={torsoPath(g, 2, HIP_Y - 3)} fill={main} {...OL} />
   }
 }
 
-/** Hood behind the head. */
-function drawTopBack(item: ShopItem, g: Geo): ReactNode {
-  if (item.style !== 'hoodie') return null
-  return <ellipse cx={CX} cy={SHOULDER_Y + 2} rx={g.shoulder / 2 + 8} ry={16} fill={shade(item.main, -0.2)} {...OL} />
+function drawWrists(c: Canvas, b: Body, item: ShopItem) {
+  for (const arm of b.arms) {
+    const band = where(grow(arm), (_, y) => y >= 43 && y <= (item.style === 'wraps' ? 46 : 45))
+    c.paint(band, item.main)
+    if (item.style === 'wraps') c.dots(where(inside(band), (_, y) => y === 45), item.accent)
+  }
 }
 
-/** Sleeve in arm coordinates: shoulder at (0, 0), hand at (0, ARM_LEN). */
-function drawSleeve(item: ShopItem, a: number): ReactNode {
-  const { main, accent } = item
+function drawWaist(c: Canvas, b: Body, item: ShopItem) {
+  c.paint(where(grow(b.torso), (x, y) => y >= 46 && y <= 48 && x >= CX - b.hw(47) - 1 && x < CX + b.hw(47) + 1), item.main)
+  c.paint(rectM(CX - 2, 45, CX + 1, 49), item.accent)
+}
+
+function drawNeck(c: Canvas, item: ShopItem) {
   switch (item.style) {
-    case 'tee':
-      return rect(-(a + 7) / 2, -7, a + 7, 20, main, 8, OL)
-    case 'compression':
-      return rect(-(a + 3) / 2, -6, a + 3, ARM_LEN - 6, main, (a + 3) / 2, OL)
-    case 'hoodie':
-      return (
-        <>
-          {rect(-(a + 8) / 2, -7, a + 8, ARM_LEN - 1, main, 8, OL)}
-          {rect(-(a + 8) / 2, ARM_LEN - 11, a + 8, 8, shade(main, -0.2), 3, OL)}
-        </>
-      )
-    case 'jacket':
-      return (
-        <>
-          {rect(-(a + 7) / 2, -7, a + 7, ARM_LEN - 2, main, 8, OL)}
-          {rect(-(a + 7) / 2 + 1.5, 12, a + 4, 4, accent, 1)}
-        </>
-      )
+    case 'towel':
+      c.paint(rectM(CX - 6, 30, CX - 4, 40), item.main)
+      c.paint(rectM(CX + 3, 30, CX + 5, 43), item.main)
+      c.dots(rectM(CX + 4, 41, CX + 4, 41), item.accent)
+      break
+    case 'platechain':
+      c.dots(symDots([[CX - 5, 31], [CX - 4, 32], [CX - 3, 33], [CX - 2, 34]]), item.main)
+      c.paint(rectM(CX - 2, 35, CX + 1, 38), item.accent, item.main)
+      break
     default:
-      return null
+      c.dots(symDots([[CX - 5, 31], [CX - 4, 32], [CX - 3, 33], [CX - 2, 34], [CX - 1, 35]]), item.main)
+      c.dots(rectM(CX - 1, 36, CX, 37), item.accent)
   }
 }
 
-function drawWrists(item: ShopItem, a: number): ReactNode {
-  return (
-    <>
-      {rect(-(a + 5) / 2, ARM_LEN - 14, a + 5, item.style === 'wraps' ? 12 : 8, item.main, 3, OL)}
-      {item.style === 'wraps' && rect(-(a + 5) / 2 + 1, ARM_LEN - 9, a + 3, 2.5, item.accent)}
-    </>
-  )
-}
-
-function drawWaist(item: ShopItem, g: Geo): ReactNode {
-  const w = g.waist + 10
-  return (
-    <>
-      {rect(CX - w / 2, WAIST_Y - 7, w, 14, item.main, 4, OL)}
-      {rect(CX - 8, WAIST_Y - 8, 16, 16, item.accent, 3, OL)}
-      {rect(CX - 3, WAIST_Y - 3, 6, 6, item.main, 1)}
-    </>
-  )
-}
-
-function drawNeck(item: ShopItem): ReactNode {
-  if (item.style === 'towel') {
-    return (
-      <>
-        {rect(CX - 24, SHOULDER_Y, 15, 40, item.main, 6, OL)}
-        {rect(CX + 9, SHOULDER_Y, 15, 48, item.main, 6, OL)}
-        {rect(CX + 10, SHOULDER_Y + 38, 13, 3, item.accent)}
-      </>
-    )
-  }
-  return (
-    <>
-      <path d={`M ${CX - 22} ${SHOULDER_Y + 2} Q ${CX} ${SHOULDER_Y + 38} ${CX + 22} ${SHOULDER_Y + 2}`} fill="none" stroke={item.main} strokeWidth={3.5} strokeDasharray="3 1.5" />
-      {item.style === 'platechain' ? (
-        <>
-          <circle cx={CX} cy={SHOULDER_Y + 22} r={8} fill={item.accent} stroke={item.main} strokeWidth={2.5} />
-          <circle cx={CX} cy={SHOULDER_Y + 22} r={2.5} fill={item.main} />
-        </>
-      ) : (
-        <circle cx={CX} cy={SHOULDER_Y + 20} r={5} fill={item.accent} stroke={item.main} strokeWidth={2} />
-      )}
-    </>
-  )
-}
-
-function drawFace(item: ShopItem): ReactNode {
-  const lens = (x: number) =>
-    item.style === 'aviators' ? (
-      <path key={x} d={`M ${x - 14} ${EYE_Y - 8} L ${x + 14} ${EYE_Y - 8} Q ${x + 14} ${EYE_Y + 12} ${x} ${EYE_Y + 12} Q ${x - 14} ${EYE_Y + 12} ${x - 14} ${EYE_Y - 8} Z`} fill={item.main} stroke={item.accent} strokeWidth={2.5} />
-    ) : (
-      rect(x - 14, EYE_Y - 9, 28, 18, item.main, 7, { key: x, ...OL })
-    )
-  return (
-    <>
-      {lens(CX - 20)}
-      {lens(CX + 20)}
-      <path d={`M ${CX - 6} ${EYE_Y - 4} L ${CX + 6} ${EYE_Y - 4}`} stroke={item.style === 'aviators' ? item.accent : INK} strokeWidth={2.5} />
-      <path d={`M ${CX - 28} ${EYE_Y - 3} L ${CX - 22} ${EYE_Y - 7} M ${CX + 12} ${EYE_Y - 3} L ${CX + 18} ${EYE_Y - 7}`} stroke="#ffffff" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
-    </>
-  )
-}
-
-function drawHead(item: ShopItem): ReactNode {
-  const { main, accent } = item
-  switch (item.style) {
-    case 'headband':
-      return (
-        <>
-          <path d={`M ${CX - 57} 82 Q ${CX} 62 ${CX + 57} 82 L ${CX + 57} 94 Q ${CX} 74 ${CX - 57} 94 Z`} fill={main} {...OL} />
-          <path d={`M ${CX + 54} 86 q 12 4 14 18 M ${CX + 54} 88 q 6 8 4 20`} fill="none" stroke={main} strokeWidth={5} strokeLinecap="round" />
-        </>
-      )
-    case 'cap':
-      return (
-        <>
-          <path d={`M ${CX - 60} 86 C ${CX - 62} 20 ${CX + 62} 20 ${CX + 60} 86 Z`} fill={main} {...OL} />
-          <ellipse cx={CX + 10} cy={86} rx={66} ry={9} fill={shade(main, -0.25)} {...OL} />
-          <circle cx={CX} cy={38} r={4} fill={accent} />
-          {rect(CX - 10, 56, 20, 13, accent, 3)}
-        </>
-      )
-    case 'beanie':
-      return (
-        <>
-          <path d={`M ${CX - 61} 90 C ${CX - 63} 16 ${CX + 63} 16 ${CX + 61} 90 Z`} fill={main} {...OL} />
-          {rect(CX - 62, 78, 124, 16, accent, 7, OL)}
-          <circle cx={CX} cy={30} r={10} fill={accent} {...OL} />
-        </>
-      )
-    case 'headphones':
-      return (
-        <>
-          <path d={`M ${CX - 62} 108 C ${CX - 70} 18 ${CX + 70} 18 ${CX + 62} 108`} fill="none" stroke={main} strokeWidth={7} />
-          {rect(CX - 72, 92, 17, 30, accent, 7, OL)}
-          {rect(CX + 55, 92, 17, 30, accent, 7, OL)}
-        </>
-      )
-    case 'crown':
-      return (
-        <>
-          <path d={`M ${CX - 30} 52 L ${CX - 34} 18 L ${CX - 16} 34 L ${CX} 10 L ${CX + 16} 34 L ${CX + 34} 18 L ${CX + 30} 52 Z`} fill={main} {...OL} />
-          <circle cx={CX} cy={38} r={4} fill={accent} />
-          <circle cx={CX - 17} cy={43} r={2.5} fill="#4f8cff" />
-          <circle cx={CX + 17} cy={43} r={2.5} fill="#34c77b" />
-        </>
-      )
-    default:
-      return null
-  }
-}
-
-// ---------------------------------------------------------------- body
-
-function hairBack(style: AvatarLook['hairStyle'], color: string): ReactNode {
-  switch (style) {
-    case 'long':
-      return rect(CX - 63, 70, 126, 108, color, 30, OL)
-    case 'ponytail':
-      return (
-        <>
-          <ellipse cx={CX + 62} cy={128} rx={14} ry={32} fill={color} transform={`rotate(-18 ${CX + 62} 128)`} {...OL} />
-          <circle cx={CX + 54} cy={98} r={6} fill="#e47aa8" {...OL} />
-        </>
-      )
-    case 'bun':
-      return <circle cx={CX} cy={44} r={20} fill={color} {...OL} />
-    case 'curly':
-      return <ellipse cx={CX} cy={HEAD_CY - 4} rx={HEAD_RX + 8} ry={HEAD_RY + 6} fill={color} {...OL} />
-    default:
-      return null
-  }
-}
-
-function hairFront(style: AvatarLook['hairStyle'], color: string): ReactNode {
-  switch (style) {
+function drawHairFront(c: Canvas, b: Body, look: AvatarLook) {
+  const color = look.hairColor
+  const head = b.head
+  const dx = (x: number) => Math.abs(x + 0.5 - CX)
+  switch (look.hairStyle) {
     case 'short':
     case 'bun':
-      return (
-        <path
-          d={`M ${CX - 59} 108 C ${CX - 64} 18 ${CX + 64} 18 ${CX + 59} 108 Q ${CX + 54} 84 ${CX + 40} 78 Q ${CX + 30} 88 ${CX + 18} 74 Q ${CX + 4} 88 ${CX - 10} 74 Q ${CX - 24} 88 ${CX - 36} 76 Q ${CX - 52} 84 ${CX - 59} 108 Z`}
-          fill={color}
-          {...OL}
-        />
-      )
+      c.paint(where(head, (x, y) => y <= 16 || (y <= 19 && dx(x) > 6.5) || (y === 17 && dx(x) > 2)), color)
+      break
     case 'buzz':
-      return <path d={`M ${CX - 58} 98 C ${CX - 62} 22 ${CX + 62} 22 ${CX + 58} 98 Q ${CX + 50} 70 ${CX} 68 Q ${CX - 50} 70 ${CX - 58} 98 Z`} fill={color} opacity={0.85} />
-    case 'curly':
-      return (
-        <g fill={color} {...OL}>
-          {[-48, -30, -12, 6, 24, 42].map((dx) => (
-            <circle key={dx} cx={CX + dx + 3} cy={66 - Math.cos((dx / 60) * 1.4) * 14} r={14} />
-          ))}
-        </g>
-      )
+      c.paint(where(head, (_, y) => y <= 15), color)
+      break
+    case 'curly': {
+      const curls = union(...[-8, -4, 0, 4, 8].map((d) => ellipseM(CX + d, 14 + Math.abs(d) / 3, 3, 3)))
+      c.paint(union(where(head, (_, y) => y <= 16), where(curls, (_, y) => y <= 19)), color)
+      break
+    }
     case 'long':
     case 'ponytail':
-      return (
-        <path
-          d={`M ${CX - 60} 124 C ${CX - 68} 16 ${CX + 68} 16 ${CX + 60} 124 L ${CX + 50} 124 Q ${CX + 50} 86 ${CX + 22} 74 Q ${CX - 8} 92 ${CX - 38} 80 Q ${CX - 50} 96 ${CX - 50} 124 Z`}
-          fill={color}
-          {...OL}
-        />
-      )
+      c.paint(where(head, (x, y) => y <= 16 || (y <= 17 && x < CX) || (look.hairStyle === 'long' && dx(x) > 7)), color)
+      break
     default: // bald: a little shine
-      return <ellipse cx={CX - 22} cy={62} rx={12} ry={6} fill="#ffffff" opacity={0.3} transform={`rotate(-20 ${CX - 22} 62)`} />
+      c.dots(rectM(CX - 5, 15, CX - 4, 15), shade(look.skinTone, 0.5))
   }
 }
 
-function drawEye(x: number): ReactNode {
-  return (
-    <g className="av-eye" key={x}>
-      <ellipse cx={x} cy={EYE_Y} rx={6.5} ry={8.5} fill={INK} />
-      <circle cx={x + 2} cy={EYE_Y - 3} r={2.6} fill="#ffffff" />
-      <circle cx={x - 2} cy={EYE_Y + 3.5} r={1.2} fill="#ffffff" />
-    </g>
-  )
+function drawFace(c: Canvas, item: ShopItem) {
+  const lens = rectM(CX - 6, 19, CX - 2, 22)
+  const shaped = item.style === 'aviators' ? minus(lens, dotsM([[CX - 6, 22], [CX - 2, 22]])) : lens
+  for (const m of [shaped, mirror(shaped)]) c.paint(m, item.main, item.style === 'aviators' ? item.accent : INK)
+  c.dots(rectM(CX - 1, 20, CX, 20), item.style === 'aviators' ? item.accent : INK)
+  c.dots(dotsM([[CX - 5, 20], [CX + 2, 20]]), shade(item.main, 0.6))
 }
+
+function drawHead(c: Canvas, b: Body, item: ShopItem) {
+  const { main, accent } = item
+  const big = grow(b.head)
+  switch (item.style) {
+    case 'headband':
+      c.paint(where(big, (_, y) => y >= 15 && y <= 17), main)
+      c.paint(dotsM([[34, 17], [35, 18], [35, 19], [34, 19], [36, 20]]), main, null)
+      break
+    case 'cap':
+      c.paint(where(big, (_, y) => y <= 17), main)
+      c.paint(rectM(CX - 9, 17, CX + 12, 18), shade(main, -0.3))
+      c.dots(rectM(CX - 1, 14, CX, 15), accent)
+      break
+    case 'beanie':
+      c.paint(where(big, (_, y) => y <= 18), main)
+      c.paint(where(big, (_, y) => y >= 16 && y <= 18), accent)
+      c.paint(ellipseM(CX, 10.5, 2.5, 2.5), accent)
+      break
+    case 'headphones':
+      c.paint(where(minus(ellipseM(CX, 22, 11.6, 11), ellipseM(CX, 22, 10.4, 9.9)), (_, y) => y <= 20), main, null)
+      c.paint(rectM(12, 19, 14, 25), accent)
+      c.paint(rectM(33, 19, 35, 25), accent)
+      break
+    case 'crown': {
+      const crown = union(rectM(CX - 6, 10, CX + 5, 13), rectM(CX - 6, 6, CX - 5, 9), rectM(CX - 1, 5, CX, 9), rectM(CX + 4, 6, CX + 5, 9))
+      c.paint(crown, main)
+      c.dots(rectM(CX - 1, 11, CX, 12), accent)
+      c.dots(dotsM([[CX - 4, 11], [CX + 3, 11]]), '#4f8cff')
+      break
+    }
+  }
+}
+
+// ---------------------------------------------------------------- sprite
+
+interface Sprite {
+  bg: ReactNode
+  body: ReactNode
+  arms: ReactNode
+  head: ReactNode
+  headTop: ReactNode
+}
+
+function buildSprite(look: AvatarLook, item: (slot: Slot) => ShopItem | undefined): Sprite {
+  const b = buildBody(look.bodyType)
+  const skin = look.skinTone
+  const [top, bottom, shoes, head, face, neck, waist, wrists] = (['top', 'bottom', 'shoes', 'head', 'face', 'neck', 'waist', 'wrists'] as Slot[]).map(item)
+
+  const bg = new Canvas()
+  drawBackground(bg, item('background'))
+
+  const body = new Canvas()
+  drawHairBack(body, look)
+  if (top) drawHood(body, b, top)
+  for (const leg of b.legs) body.paint(leg, skin)
+  body.paint(b.torso, skin)
+  bodyDetails(look.bodyType, body, skin)
+  if (shoes) drawShoes(body, b, shoes)
+  if (bottom) drawBottom(body, b, bottom)
+  if (top) drawTop(body, b, top)
+  if (waist) drawWaist(body, b, waist)
+  if (neck) drawNeck(body, neck)
+
+  const arms = new Canvas()
+  for (const arm of b.arms) arms.paint(arm, skin)
+  if (top) drawSleeves(arms, b, top)
+  if (wrists) drawWrists(arms, b, wrists)
+
+  const headC = new Canvas()
+  headC.paint(b.head, skin)
+  headC.dots(rectM(CX - 1, 26, CX, 26), INK)
+  drawHairFront(headC, b, look)
+
+  const headTop = new Canvas()
+  if (face) drawFace(headTop, face)
+  if (head) drawHead(headTop, b, head)
+
+  return { bg: bg.render(), body: body.render(), arms: arms.render(), head: headC.render(), headTop: headTop.render() }
+}
+
+const EYES_OPEN = <path d={`M${CX - 4} 20h1v3h-1zM${CX + 3} 20h1v3h-1z`} fill={INK} />
+const EYES_CLOSED = <path d={`M${CX - 5} 22h2v1h-2zM${CX + 3} 22h2v1h-2z`} fill={INK} />
+const EYES_HAPPY = <path d={`M${CX - 5} 22h1v1h-1zM${CX - 4} 21h1v1h-1zM${CX - 3} 22h1v1h-1zM${CX + 2} 22h1v1h-1zM${CX + 3} 21h1v1h-1zM${CX + 4} 22h1v1h-1z`} fill={INK} />
 
 interface Props {
   look: AvatarLook
@@ -461,74 +485,49 @@ interface Props {
   preview?: ShopItem | null
   size?: number
   className?: string
-  /** Idle animation: breathing, blinking, swaying arms. */
+  /** Idle animation: bobbing and blinking. */
   animated?: boolean
   /** Happy hop (e.g. after buying something). Change `key` to replay it. */
   cheer?: boolean
 }
 
 export function Avatar({ look, preview, size = 200, className, animated = false, cheer = false }: Props) {
-  const g = geometry(look.bodyType)
-  const skin = look.skinTone
-  const skinShade = shade(skin, -0.1)
-  const itemIn = (slot: Slot): ShopItem | undefined => {
-    if (preview?.slot === slot) return preview
-    const id = look.equipped[slot]
-    return id ? ITEMS_BY_ID.get(id) : undefined
-  }
-  const [bg, top, bottom, shoes, head, face, neck, waist, wrists] = (
-    ['background', 'top', 'bottom', 'shoes', 'head', 'face', 'neck', 'waist', 'wrists'] as Slot[]
-  ).map(itemIn)
+  const sprite = useMemo(
+    () =>
+      buildSprite(look, (slot) => {
+        if (preview?.slot === slot) return preview
+        const id = look.equipped[slot]
+        return id ? ITEMS_BY_ID.get(id) : undefined
+      }),
+    [look, preview],
+  )
   const classes = [className, animated && 'av-anim', cheer && 'av-cheer'].filter(Boolean).join(' ')
 
   return (
-    <svg viewBox="0 0 200 300" width={size} height={(size * 3) / 2} className={classes} role="img" aria-label="Your lifter avatar">
-      {bg ? drawBackground(bg) : rect(0, 0, 200, 300, 'var(--color-surface-2)')}
-      <ellipse className="av-shadow" cx={CX} cy={GROUND} rx={46} ry={6} fill="#000000" opacity={0.2} />
-
-      <g className="av-body">
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width={size}
+      height={(size * H) / W}
+      className={classes}
+      shapeRendering="crispEdges"
+      role="img"
+      aria-label="Your lifter avatar"
+    >
+      {sprite.bg}
+      <g className="av-char">
+        {sprite.body}
+        <g className="av-arms">{sprite.arms}</g>
         <g className="av-head">
-          {hairBack(look.hairStyle, look.hairColor)}
-          {top && drawTopBack(top, g)}
-        </g>
-
-        {/* legs */}
-        {g.legX.map((x, i) => rect(x - g.leg / 2, LEG_TOP, g.leg, LEG_END - LEG_TOP + 4, skinShade, g.leg / 2, { key: i, ...OL }))}
-        {shoes ? drawShoes(shoes, g) : g.legX.map((x, i) => <ellipse key={i} cx={x + (i ? 3 : -3)} cy={LEG_END + 6} rx={g.leg / 2 + 4} ry={7} fill={skin} {...OL} />)}
-
-        {/* torso */}
-        <path d={torsoPath(g)} fill={skin} {...OL} />
-        {bottom && drawBottom(bottom, g)}
-        {top && drawTop(top, g)}
-        {waist && drawWaist(waist, g)}
-        {neck && drawNeck(neck)}
-
-        {/* arms, in front of the body so they can swing */}
-        {g.armX.map((x, i) => (
-          <g key={i} transform={`translate(${x} ${ARM_TOP}) rotate(${i === 0 ? 10 : -10})`}>
-            <g className={i === 0 ? 'av-arm-l' : 'av-arm-r'}>
-              {rect(-g.arm / 2, -6, g.arm, ARM_LEN + 2, skinShade, g.arm / 2, OL)}
-              {top && drawSleeve(top, g.arm)}
-              {wrists && drawWrists(wrists, g.arm)}
-              <circle cx={0} cy={ARM_LEN} r={g.arm / 2 + 3} fill={skin} {...OL} />
-            </g>
-          </g>
-        ))}
-
-        {/* head */}
-        <g className="av-head">
-          <circle cx={CX - HEAD_RX + 2} cy={HEAD_CY + 10} r={9} fill={skinShade} {...OL} />
-          <circle cx={CX + HEAD_RX - 2} cy={HEAD_CY + 10} r={9} fill={skinShade} {...OL} />
-          <ellipse cx={CX} cy={HEAD_CY} rx={HEAD_RX} ry={HEAD_RY} fill={skin} {...OL} />
-          <ellipse cx={CX - 34} cy={EYE_Y + 14} rx={8} ry={5} fill="#ff7b93" opacity={0.4} />
-          <ellipse cx={CX + 34} cy={EYE_Y + 14} rx={8} ry={5} fill="#ff7b93" opacity={0.4} />
-          {drawEye(CX - 20)}
-          {drawEye(CX + 20)}
-          <path d={`M ${CX - 27} ${EYE_Y - 14} Q ${CX - 20} ${EYE_Y - 19} ${CX - 13} ${EYE_Y - 14} M ${CX + 13} ${EYE_Y - 14} Q ${CX + 20} ${EYE_Y - 19} ${CX + 27} ${EYE_Y - 14}`} fill="none" stroke={shade(look.hairColor, -0.1)} strokeWidth={3} strokeLinecap="round" />
-          <path d={`M ${CX - 7} ${EYE_Y + 15} Q ${CX} ${EYE_Y + 25} ${CX + 7} ${EYE_Y + 15} Z`} fill="#8a3442" stroke={INK} strokeWidth={2} strokeLinejoin="round" />
-          {hairFront(look.hairStyle, look.hairColor)}
-          {face && drawFace(face)}
-          {head && drawHead(head)}
+          {sprite.head}
+          {cheer ? (
+            EYES_HAPPY
+          ) : (
+            <>
+              <g className="av-eyes-open">{EYES_OPEN}</g>
+              {animated && <g className="av-eyes-closed">{EYES_CLOSED}</g>}
+            </>
+          )}
+          {sprite.headTop}
         </g>
       </g>
     </svg>
