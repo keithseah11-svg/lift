@@ -97,6 +97,14 @@ export function SettingsPage() {
           </Link>
         </section>
 
+        <Link to="/settings/exercises" className="card flex items-center justify-between">
+          <div>
+            <h2 className="font-bold">Exercise library</h2>
+            <p className="text-sm text-muted">Create your own exercises and choose the muscles they work</p>
+          </div>
+          <span className="text-muted">›</span>
+        </Link>
+
         <section className="card space-y-3">
           <h2 className="font-bold">Backup (Excel)</h2>
           <p className="text-sm text-muted">

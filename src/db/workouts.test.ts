@@ -205,3 +205,33 @@ describe('custom muscle groups', () => {
     expect(await db.muscles.count()).toBe(0)
   })
 })
+
+describe('custom exercises', () => {
+  it('creates, edits and only deletes unused custom exercises', async () => {
+    const { createExercise, updateExercise, deleteExercise } = await import('./exercises')
+    const e = await createExercise({
+      name: 'Landmine Row',
+      primaryMuscle: 'upper_back',
+      secondaryMuscles: ['lats'],
+      equipment: 'barbell',
+      incrementKg: 2.5,
+      defaultRestSec: 120,
+    })
+    expect(e.custom).toBe(true)
+
+    // Edit muscles; explicit secondary choices keep up with the change.
+    await db.exercises.update(e.id, { countedSecondary: [] })
+    const edited = await updateExercise(e.id, { ...e, name: 'Landmine Row (1 arm)', secondaryMuscles: ['lats', 'biceps'] })
+    expect(edited.name).toBe('Landmine Row (1 arm)')
+    expect(edited.countedSecondary).toEqual(['biceps'])
+
+    // Used in a workout → can't delete.
+    const w = await startWorkout()
+    await addExerciseToWorkout(w, edited)
+    expect(await deleteExercise(e.id)).toEqual({ ok: false, workouts: 1, routines: 0 })
+    await deleteWorkout(w)
+    expect(await deleteExercise(e.id)).toEqual({ ok: true })
+    // Built-in exercises can never be deleted.
+    expect((await deleteExercise('bench-press')).ok).toBe(false)
+  })
+})

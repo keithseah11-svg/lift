@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/schema'
-import { createExercise } from '../db/exercises'
 import type { Exercise } from '../db/types'
-import { EQUIPMENT, EQUIPMENT_LABELS, muscleLabel, type Equipment, type Muscle } from '../domain/muscles'
+import { muscleLabel, type Muscle } from '../domain/muscles'
 import { useMuscles } from '../app/MusclesProvider'
 import { Sheet } from './Sheet'
+import { ExerciseForm } from './ExerciseForm'
 import { searchByName } from '../domain/search'
 
 interface Props {
@@ -37,10 +37,10 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
   return (
     <Sheet open={open} onClose={onClose} title={creating ? 'New exercise' : 'Add exercise'} fullScreen>
       {creating ? (
-        <CreateExerciseForm
+        <ExerciseForm
           initialName={query}
           onCancel={() => setCreating(false)}
-          onCreated={(e) => {
+          onSaved={(e) => {
             setCreating(false)
             pick(e)
           }}
@@ -58,6 +58,10 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
+            <button className="btn-secondary w-full justify-start py-2 text-sm" onClick={() => setCreating(true)}>
+              + Create {query.trim() && filtered.length === 0 ? `“${query.trim()}”` : 'new exercise'}
+              <span className="ml-auto font-normal text-muted">name + muscles</span>
+            </button>
             <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
               <button className={muscle === null ? 'chip-active' : 'chip'} onClick={() => setMuscle(null)}>
                 All
@@ -82,90 +86,16 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
               </li>
             ))}
           </ul>
-          {exercises && filtered.length === 0 && <p className="py-6 text-center text-muted">No exercises match.</p>}
-          <button className="btn-secondary mt-3 w-full" onClick={() => setCreating(true)}>
-            + Create custom exercise
-          </button>
+          {exercises && filtered.length === 0 && (
+            <div className="py-6 text-center text-muted">
+              <p>No exercises match.</p>
+              <button className="btn-primary mt-3" onClick={() => setCreating(true)}>
+                + Create “{query.trim()}”
+              </button>
+            </div>
+          )}
         </>
       )}
     </Sheet>
-  )
-}
-
-function CreateExerciseForm({
-  initialName,
-  onCancel,
-  onCreated,
-}: {
-  initialName: string
-  onCancel: () => void
-  onCreated: (e: Exercise) => void
-}) {
-  const muscles = useMuscles().all
-  const [name, setName] = useState(initialName)
-  const [primary, setPrimary] = useState<Muscle>('chest')
-  const [secondary, setSecondary] = useState<Muscle[]>([])
-  const [equipment, setEquipment] = useState<Equipment>('dumbbell')
-
-  const toggleSecondary = (m: Muscle) =>
-    setSecondary((s) => (s.includes(m) ? s.filter((x) => x !== m) : [...s, m]))
-
-  const submit = async () => {
-    const exercise = await createExercise({
-      name: name.trim(),
-      primaryMuscle: primary,
-      secondaryMuscles: secondary.filter((m) => m !== primary),
-      equipment,
-      incrementKg: equipment === 'dumbbell' ? 2 : equipment === 'machine' ? 5 : 2.5,
-      defaultRestSec: 120,
-    })
-    onCreated(exercise)
-  }
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <label className="label">Name</label>
-        <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Cable Row (Single Arm)" />
-      </div>
-      <div>
-        <label className="label">Equipment</label>
-        <select className="field" value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)}>
-          {EQUIPMENT.map((eq) => (
-            <option key={eq} value={eq}>
-              {EQUIPMENT_LABELS[eq]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Primary muscle</label>
-        <select className="field" value={primary} onChange={(e) => setPrimary(e.target.value as Muscle)}>
-          {muscles.map((m) => (
-            <option key={m} value={m}>
-              {muscleLabel(m)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Secondary muscles (count as ½ set)</label>
-        <div className="flex flex-wrap gap-2">
-          {muscles.filter((m) => m !== primary).map((m) => (
-            <button key={m} className={secondary.includes(m) ? 'chip-active' : 'chip'} onClick={() => toggleSecondary(m)}>
-              {muscleLabel(m)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex gap-2">
-        <button className="btn-secondary flex-1" onClick={onCancel}>
-          Cancel
-        </button>
-        <button className="btn-primary flex-1" disabled={!name.trim()} onClick={submit}>
-          Create
-        </button>
-      </div>
-    </div>
   )
 }

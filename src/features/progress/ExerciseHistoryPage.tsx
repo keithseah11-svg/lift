@@ -56,7 +56,15 @@ export function ExerciseHistoryPage() {
 
   return (
     <div className="pb-6">
-      <PageHeader title={exercise.name} back />
+      <PageHeader
+        title={exercise.name}
+        back
+        right={
+          <Link to={`/settings/exercises/${exercise.id}`} className="btn-ghost">
+            Edit
+          </Link>
+        }
+      />
       <div className="space-y-3 px-4">
         <p className="text-sm text-muted">
           {muscleLabel(exercise.primaryMuscle)}
