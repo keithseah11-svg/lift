@@ -215,7 +215,7 @@ function TargetsSheet({ open, onClose, target }: { open: boolean; onClose: () =>
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title="Daily targets">
+    <Sheet open={open} onClose={onClose} title="Daily targets" fullScreen>
       <div className="space-y-3">
         {(
           [

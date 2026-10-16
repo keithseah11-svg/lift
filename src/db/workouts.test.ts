@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './schema'
-import { addExerciseToWorkout, finishWorkout, getActiveWorkout, moveWorkoutExercise, previousPerformance, startWorkout, updateSet } from './workouts'
+import { addExerciseToWorkout, deleteWorkout, finishWorkout, getActiveWorkout, moveWorkoutExercise, previousPerformance, startWorkout, updateSet } from './workouts'
 import { routineGroups } from './supersets'
 import { setMeasurement } from './measurements'
 import { supersetLayout } from '../domain/supersets'
 import { addRoutineExercise, createRoutine, updateRoutineExercise } from './routines'
-import { loadDetails, summarize } from './stats'
+import { loadDetails, sessionTimes, summarize } from './stats'
 
 beforeEach(async () => {
   await db.delete()
@@ -137,5 +137,37 @@ describe('measurements', () => {
     const rows = await db.measurements.toArray()
     expect(rows).toHaveLength(2)
     expect(rows.find((r) => r.site === 'waist')?.value).toBe(84.5)
+  })
+})
+
+describe('empty workouts', () => {
+  it('discards a workout finished with no completed sets', async () => {
+    const id = await startWorkout()
+    await addExerciseToWorkout(id, await exercise('bench-press'))
+    expect(await finishWorkout(id)).toBe(false)
+    expect(await db.workouts.get(id)).toBeUndefined()
+    expect(await db.workoutExercises.where('workoutId').equals(id).count()).toBe(0)
+  })
+
+  it('does not count old empty workouts as sessions', async () => {
+    await db.workouts.add({ id: 'empty', name: 'Oops', routineId: null, status: 'done', startedAt: Date.now(), endedAt: Date.now(), notes: '' })
+    const real = await startWorkout()
+    await addExerciseToWorkout(real, await exercise('bench-press'))
+    const [set] = await db.sets.where('workoutId').equals(real).sortBy('order')
+    await updateSet(set.id, { weightKg: 60, reps: 5, done: true })
+    await finishWorkout(real)
+    const times = await sessionTimes()
+    expect(times).toHaveLength(1)
+  })
+
+  it('a deleted workout disappears from sessions', async () => {
+    const id = await startWorkout()
+    await addExerciseToWorkout(id, await exercise('bench-press'))
+    const [set] = await db.sets.where('workoutId').equals(id).sortBy('order')
+    await updateSet(set.id, { weightKg: 60, reps: 5, done: true })
+    await finishWorkout(id)
+    expect(await sessionTimes()).toHaveLength(1)
+    await deleteWorkout(id)
+    expect(await sessionTimes()).toHaveLength(0)
   })
 })

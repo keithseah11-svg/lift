@@ -1,5 +1,6 @@
-import { NavLink, Outlet, useLocation } from 'react-router'
+import { NavLink, Outlet } from 'react-router'
 import { RestTimerBar } from '../components/RestTimerBar'
+import { ActiveWorkoutBar } from '../components/ActiveWorkoutBar'
 
 const TABS = [
   { to: '/', label: 'Home', icon: '🏠' },
@@ -10,36 +11,33 @@ const TABS = [
 ]
 
 export function AppShell() {
-  const { pathname } = useLocation()
-  const inWorkout = pathname.startsWith('/workout/')
-
   return (
     <div className="mx-auto min-h-dvh max-w-lg">
-      <main className="pb-28">
+      {/* Room for the tab bar plus the rest timer and workout bars when they show. */}
+      <main className="pb-48">
         <Outlet />
       </main>
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg">
         <RestTimerBar />
-        {!inWorkout && (
-          <nav className="pb-safe border-t border-line bg-bg/95 backdrop-blur">
-            <ul className="grid grid-cols-5">
-              {TABS.map((t) => (
-                <li key={t.to}>
-                  <NavLink
-                    to={t.to}
-                    end={t.to === '/'}
-                    className={({ isActive }) =>
-                      `flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${isActive ? 'text-accent' : 'text-muted'}`
-                    }
-                  >
-                    <span className="text-xl leading-none">{t.icon}</span>
-                    {t.label}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
+        <ActiveWorkoutBar />
+        <nav className="pb-safe border-t border-line bg-bg/95 backdrop-blur">
+          <ul className="grid grid-cols-5">
+            {TABS.map((t) => (
+              <li key={t.to}>
+                <NavLink
+                  to={t.to}
+                  end={t.to === '/'}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${isActive ? 'text-accent' : 'text-muted'}`
+                  }
+                >
+                  <span className="text-xl leading-none">{t.icon}</span>
+                  {t.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </div>
   )

@@ -57,7 +57,17 @@ export class LiftDB extends Dexie {
     this.on('populate', (tx) => {
       tx.table('exercises').bulkAdd(SEED_EXERCISES)
     })
+    // Exercises added to the built-in library in later updates reach existing
+    // installs here. Only missing ids are added; nothing existing is changed.
+    this.on('ready', () => addMissingSeedExercises(this))
   }
+}
+
+export async function addMissingSeedExercises(db: LiftDB): Promise<number> {
+  const existing = new Set(await db.exercises.toCollection().primaryKeys())
+  const missing = SEED_EXERCISES.filter((e) => !existing.has(e.id))
+  if (missing.length) await db.exercises.bulkAdd(missing)
+  return missing.length
 }
 
 export const db = new LiftDB()

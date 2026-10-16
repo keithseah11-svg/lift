@@ -230,15 +230,24 @@ export async function updateWorkout(id: string, patch: Partial<Workout>): Promis
   await db.workouts.update(id, patch)
 }
 
-/** Drops unticked sets and empty exercises, then marks the workout finished. */
-export async function finishWorkout(id: string): Promise<void> {
-  await db.transaction('rw', db.workouts, db.workoutExercises, db.sets, async () => {
+/**
+ * Drops unticked sets and empty exercises, then marks the workout finished.
+ * A workout with no completed sets left is deleted instead, so it never
+ * counts as a session. Returns false when that happened.
+ */
+export async function finishWorkout(id: string): Promise<boolean> {
+  return db.transaction('rw', db.workouts, db.workoutExercises, db.sets, async () => {
     await db.sets
       .where('workoutId')
       .equals(id)
       .filter((s) => !s.done)
       .delete()
     const remaining = await db.sets.where('workoutId').equals(id).toArray()
+    if (remaining.length === 0) {
+      await db.workoutExercises.where('workoutId').equals(id).delete()
+      await db.workouts.delete(id)
+      return false
+    }
     const withSets = new Set(remaining.map((s) => s.workoutExerciseId))
     await db.workoutExercises
       .where('workoutId')
@@ -250,6 +259,7 @@ export async function finishWorkout(id: string): Promise<void> {
       status: 'done',
       endedAt: workout?.endedAt ?? Date.now(),
     })
+    return true
   })
 }
 

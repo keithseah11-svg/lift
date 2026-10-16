@@ -5,6 +5,7 @@ import { createExercise } from '../db/exercises'
 import type { Exercise } from '../db/types'
 import { EQUIPMENT, EQUIPMENT_LABELS, MUSCLES, MUSCLE_LABELS, type Equipment, type Muscle } from '../domain/muscles'
 import { Sheet } from './Sheet'
+import { searchByName } from '../domain/search'
 
 interface Props {
   open: boolean
@@ -19,12 +20,10 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
   const exercises = useLiveQuery(() => db.exercises.orderBy('name').toArray(), [])
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return (exercises ?? []).filter(
-      (e) =>
-        (!q || e.name.toLowerCase().includes(q)) &&
-        (!muscle || e.primaryMuscle === muscle || e.secondaryMuscles.includes(muscle)),
+    const byMuscle = (exercises ?? []).filter(
+      (e) => !muscle || e.primaryMuscle === muscle || e.secondaryMuscles.includes(muscle),
     )
+    return searchByName(byMuscle, query, (e) => e.name)
   }, [exercises, query, muscle])
 
   const pick = (e: Exercise) => {
@@ -34,7 +33,7 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
   }
 
   return (
-    <Sheet open={open} onClose={onClose} title={creating ? 'New exercise' : 'Add exercise'}>
+    <Sheet open={open} onClose={onClose} title={creating ? 'New exercise' : 'Add exercise'} fullScreen>
       {creating ? (
         <CreateExerciseForm
           initialName={query}
@@ -47,7 +46,16 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
       ) : (
         <>
           <div className="sticky top-0 z-10 -mx-4 space-y-2 bg-surface px-4 pb-2">
-            <input className="field" placeholder="Search exercises" value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input
+              className="field"
+              type="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              autoCorrect="off"
+              placeholder="Search exercises"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
             <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
               <button className={muscle === null ? 'chip-active' : 'chip'} onClick={() => setMuscle(null)}>
                 All

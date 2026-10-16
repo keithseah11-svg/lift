@@ -31,10 +31,11 @@ export function WorkoutsPage() {
 
   const trained = new Map<string, string[]>()
   for (const s of summaries ?? []) {
+    if (!s.counts) continue
     const key = dayKey(s.workout.startedAt)
     trained.set(key, [...(trained.get(key) ?? []), s.workout.id])
   }
-  const streak = weekStreak((summaries ?? []).map((s) => s.workout.startedAt), settings.weeklySessionTarget)
+  const streak = weekStreak((summaries ?? []).filter((s) => s.counts).map((s) => s.workout.startedAt), settings.weeklySessionTarget)
 
   const groups = new Map<number, NonNullable<typeof summaries>>()
   for (const s of summaries ?? []) {
@@ -72,7 +73,8 @@ export function WorkoutsPage() {
             <h2 className="mb-2 flex justify-between text-sm text-muted">
               <span>Week of {format(week, 'd MMM yyyy')}</span>
               <span>
-                {items.length} session{items.length > 1 ? 's' : ''} · {formatVolume(items.reduce((a, s) => a + s.volume, 0))}
+                {items.filter((s) => s.counts).length} session{items.filter((s) => s.counts).length === 1 ? '' : 's'} ·{' '}
+                {formatVolume(items.reduce((a, s) => a + s.volume, 0))}
               </span>
             </h2>
             <ul className="space-y-2">
@@ -87,7 +89,13 @@ export function WorkoutsPage() {
                       {s.workout.endedAt && `${formatDuration(s.workout.endedAt - s.workout.startedAt)} · `}
                       {formatVolume(s.volume)} · {s.setCount} sets
                     </div>
-                    <div className="mt-1 text-sm">{s.musclesHit.map((m) => MUSCLE_LABELS[m]).join(', ')}</div>
+                    <div className="mt-1 text-sm">
+                      {s.counts ? (
+                        s.musclesHit.map((m) => MUSCLE_LABELS[m]).join(', ')
+                      ) : (
+                        <span className="text-warn">Empty, not counted. Open it to delete.</span>
+                      )}
+                    </div>
                   </Link>
                 </li>
               ))}

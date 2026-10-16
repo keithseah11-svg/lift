@@ -12,6 +12,8 @@ export interface WorkoutSummary {
   exerciseCount: number
   musclesHit: Muscle[]
   muscleSets: Partial<Record<Muscle, number>>
+  /** False for workouts saved with no completed sets (older versions allowed this). */
+  counts: boolean
 }
 
 export interface LoadedWorkout {
@@ -34,7 +36,15 @@ export function summarize(loaded: LoadedWorkout, exercises: Map<string, Exercise
     exerciseCount: loaded.exercises.length,
     musclesHit: musclesHit(items),
     muscleSets: muscleSetCounts(items),
+    counts: loaded.sets.some((s) => s.done),
   }
+}
+
+/** Start times of finished workouts that have at least one completed set. */
+export async function sessionTimes(): Promise<number[]> {
+  const [workouts, sets] = await Promise.all([db.workouts.where('status').equals('done').toArray(), db.sets.toArray()])
+  const withSets = new Set(sets.filter((s) => s.done).map((s) => s.workoutId))
+  return workouts.filter((w) => withSets.has(w.id)).map((w) => w.startedAt)
 }
 
 /** Finished workouts that started in [start, end), newest first, with their exercises and sets. */

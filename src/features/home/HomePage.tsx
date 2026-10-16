@@ -13,7 +13,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { ProgressBar } from '../../components/ProgressBar'
 import { MuscleSetList } from '../../components/MuscleSetList'
 import { BodyHeatmap } from '../../components/BodyHeatmap'
-import { loadAllRecords } from '../../db/stats'
+import { loadAllRecords, sessionTimes } from '../../db/stats'
 import { weekStreak } from '../../domain/streak'
 import { weeklyRate, withSevenDayAverage } from '../../domain/bodyweight'
 import { formatKg, formatNumber } from '../../lib/format'
@@ -37,7 +37,7 @@ export function HomePage() {
   const macroEntries = useLiveQuery(() => db.macroEntries.where('date').equals(todayKey).toArray(), [todayKey])
   const workoutCount = useLiveQuery(() => db.workouts.count(), [])
   const records = useLiveQuery(async () => (exerciseMap ? loadAllRecords(exerciseMap) : undefined), [exerciseMap])
-  const doneTimes = useLiveQuery(async () => (await db.workouts.where('status').equals('done').toArray()).map((w) => w.startedAt), [])
+  const doneTimes = useLiveQuery(sessionTimes, [])
   const bodyweight = useLiveQuery(async () => {
     const points = withSevenDayAverage(await db.bodyweight.orderBy('date').toArray())
     return points.length ? { latest: points[points.length - 1], rate: weeklyRate(points) } : null
@@ -69,16 +69,6 @@ export function HomePage() {
         }
       />
       <div className="space-y-3 px-4">
-        {active && (
-          <Link to={`/workout/${active.id}`} className="card flex items-center justify-between bg-accent-soft">
-            <div>
-              <div className="text-xs text-muted">In progress</div>
-              <div className="font-semibold">{active.name}</div>
-            </div>
-            <span className="btn-primary">Resume</span>
-          </Link>
-        )}
-
         {backupDue && (
           <Link to="/settings" className="card flex items-center gap-3 border border-warn/40">
             <span className="text-2xl">💾</span>

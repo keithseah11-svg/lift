@@ -7,6 +7,7 @@ import { loadAllRecords } from '../../db/stats'
 import { MUSCLE_LABELS } from '../../domain/muscles'
 import { formatKg } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
+import { searchByName } from '../../domain/search'
 import { ProgressTabs } from './ProgressTabs'
 
 type Sort = 'strength' | 'recent' | 'name'
@@ -18,12 +19,11 @@ export function ExercisesPage() {
   const [query, setQuery] = useState('')
   const rows = useLiveQuery(async () => (exerciseMap ? loadAllRecords(exerciseMap) : undefined), [exerciseMap])
 
-  const q = query.trim().toLowerCase()
-  const shown = (rows ?? [])
-    .filter((r) => !q || r.exercise.name.toLowerCase().includes(q))
+  const shown = [...(rows ?? [])]
     .sort((a, b) =>
       sort === 'recent' ? b.lastAt - a.lastAt : sort === 'name' ? a.exercise.name.localeCompare(b.exercise.name) : 0,
     )
+  const matching = searchByName(shown, query, (r) => r.exercise.name)
 
   return (
     <div>
@@ -48,7 +48,7 @@ export function ExercisesPage() {
         {rows?.length === 0 && <div className="card text-center text-muted">Exercises you log will show up here.</div>}
 
         <ul className="card divide-y divide-line p-0">
-          {shown.map(({ exercise, records, sessions, lastAt }) => (
+          {matching.map(({ exercise, records, sessions, lastAt }) => (
             <li key={exercise.id}>
               <Link to={`/exercise/${exercise.id}`} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">

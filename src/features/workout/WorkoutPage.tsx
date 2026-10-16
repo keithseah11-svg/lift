@@ -84,10 +84,18 @@ export function WorkoutPage() {
 
   const finish = async () => {
     const unticked = sets.filter((s) => !s.done && (s.weightKg != null || s.reps != null)).length
-    if (doneSets.length === 0 && !confirm('No sets are ticked. Finish anyway? The workout will be empty.')) return
-    if (unticked > 0 && !confirm(`${unticked} set${unticked > 1 ? 's are' : ' is'} not ticked and will be discarded. Finish?`)) return
-    await finishWorkout(workout.id)
+    const anyDone = sets.some((s) => s.done)
+    if (!anyDone) {
+      const msg = isActive
+        ? 'No sets are ticked, so there is nothing to save. Discard this workout?'
+        : 'No sets are ticked, so this workout will be deleted. Continue?'
+      if (!confirm(msg)) return
+    } else if (unticked > 0 && !confirm(`${unticked} set${unticked > 1 ? 's are' : ' is'} not ticked and will be discarded. Finish?`)) {
+      return
+    }
+    const saved = await finishWorkout(workout.id)
     if (isActive) stopRest()
+    if (!saved) return navigate(isActive ? '/' : '/history', { replace: true })
     navigate(isActive ? `/history/${workout.id}?finished=1` : `/history/${workout.id}`, { replace: true })
   }
 
@@ -110,7 +118,10 @@ export function WorkoutPage() {
             aria-label="Workout name"
           />
         }
-        back={!isActive}
+        back
+        // Leaving an active workout keeps it running; the bar above the tabs brings you back.
+        onBack={isActive ? () => navigate('/') : undefined}
+        backLabel={isActive ? 'Home (workout keeps running)' : 'Back'}
         right={
           <button className="btn-primary px-4 py-2" onClick={finish}>
             {isActive ? 'Finish' : 'Save'}
