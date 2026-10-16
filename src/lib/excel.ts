@@ -302,7 +302,7 @@ const SPECS = [
     }),
     columns: [
       { header: 'Item', width: 22, display: (r) => ITEMS_BY_ID.get(r.itemId)?.name ?? r.itemId },
-      { header: 'Price (coins)', field: 'price', kind: 'number' },
+      { header: 'Price (potatoes)', field: 'price', kind: 'number' },
       { header: 'Bought', field: 'purchasedAt', kind: 'date', width: 18 },
       { header: 'Item ID', field: 'itemId', kind: 'string', width: 20 },
     ],

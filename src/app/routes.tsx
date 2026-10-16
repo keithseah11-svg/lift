@@ -35,7 +35,7 @@ export const router = createHashRouter([
       { path: '/plan/routine/:id', element: <RoutineEditorPage /> },
       { path: '/food', element: <FoodPage /> },
       { path: '/settings', element: <SettingsPage /> },
-      { path: '/avatar', element: <AvatarPage /> },
+      { path: '/profile', element: <AvatarPage /> },
       { path: '/settings/muscles', element: <MuscleTargetsPage /> },
       { path: '/settings/muscles/:id', element: <MuscleDetailPage /> },
       { path: '/settings/exercises', element: <ExerciseLibraryPage /> },

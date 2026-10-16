@@ -8,6 +8,7 @@ const TABS = [
   { to: '/plan', label: 'Plan', icon: '📅' },
   { to: '/food', label: 'Food', icon: '🍗' },
   { to: '/history', label: 'Progress', icon: '📈' },
+  { to: '/profile', label: 'Profile', icon: '🧸' },
 ]
 
 export function AppShell() {
@@ -21,7 +22,7 @@ export function AppShell() {
         <RestTimerBar />
         <ActiveWorkoutBar />
         <nav className="pb-safe border-t border-line bg-bg/95 backdrop-blur">
-          <ul className="grid grid-cols-5">
+          <ul className="grid grid-cols-6">
             {TABS.map((t) => (
               <li key={t.to}>
                 <NavLink

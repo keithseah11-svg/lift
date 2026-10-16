@@ -2,9 +2,10 @@ import type { Key, ReactNode } from 'react'
 import { ITEMS_BY_ID, type AvatarLook, type BodyType, type ShopItem, type Slot } from '../../domain/game/catalog'
 
 /**
- * The lifter avatar: a flat cartoon figure drawn in layers. Every clothing
- * item is drawn from the same body measurements, so items fit all four
- * body types. viewBox 0 0 200 300, centre line x = 100.
+ * The lifter avatar: a chibi figure (big head, stubby limbs, soft outlines)
+ * drawn in layers. Every clothing item is drawn from the same body
+ * measurements, so items fit all four body types. viewBox 0 0 200 300,
+ * centre line x = 100. Animations live in index.css (.av-*).
  */
 
 interface Body {
@@ -16,33 +17,53 @@ interface Body {
 }
 
 const BODIES: Record<BodyType, Body> = {
-  lean: { shoulder: 56, waist: 40, hip: 46, arm: 12, leg: 16 },
-  athletic: { shoulder: 66, waist: 44, hip: 48, arm: 15, leg: 18 },
-  muscular: { shoulder: 80, waist: 50, hip: 52, arm: 19, leg: 22 },
-  curvy: { shoulder: 58, waist: 42, hip: 62, arm: 13, leg: 21 },
+  lean: { shoulder: 50, waist: 46, hip: 50, arm: 13, leg: 15 },
+  athletic: { shoulder: 60, waist: 50, hip: 52, arm: 15, leg: 17 },
+  muscular: { shoulder: 74, waist: 56, hip: 56, arm: 19, leg: 20 },
+  curvy: { shoulder: 52, waist: 46, hip: 64, arm: 14, leg: 19 },
 }
 
 const CX = 100
-const SHOULDER_Y = 86
-const WAIST_Y = 148
-const HIP_Y = 170
-const ARM_END = 192
-const LEG_TOP = 162
-const LEG_END = 270
+const HEAD_CY = 98
+const HEAD_RX = 58
+const HEAD_RY = 54
+const EYE_Y = 106
+const SHOULDER_Y = 146
+const WAIST_Y = 192
+const HIP_Y = 210
+const ARM_TOP = 154
+const ARM_LEN = 42
+const LEG_TOP = 204
+const LEG_END = 242
+const GROUND = 260
+
+const INK = '#3a2e3f'
+const OL = { stroke: INK, strokeWidth: 2.5, strokeLinejoin: 'round' as const }
 
 interface Geo extends Body {
-  armX: [number, number] // centre x of left/right arm
-  legX: [number, number]
-  torso: string // torso outline path
+  armX: [number, number] // shoulder x of left/right arm
+  legX: [number, number] // centre x of left/right leg
 }
 
 function geometry(type: BodyType): Geo {
   const b = BODIES[type]
-  const armOffset = b.shoulder / 2 + b.arm / 2 - 3
-  const legOffset = Math.max(b.hip / 4 + 2, b.leg / 2 + 3)
-  const s = b.shoulder / 2
-  const torso = `M ${CX - s} ${SHOULDER_Y + 6} Q ${CX - s} ${SHOULDER_Y} ${CX - s + 8} ${SHOULDER_Y} L ${CX + s - 8} ${SHOULDER_Y} Q ${CX + s} ${SHOULDER_Y} ${CX + s} ${SHOULDER_Y + 6} L ${CX + b.waist / 2} ${WAIST_Y} L ${CX + b.hip / 2} ${HIP_Y} L ${CX - b.hip / 2} ${HIP_Y} L ${CX - b.waist / 2} ${WAIST_Y} Z`
-  return { ...b, armX: [CX - armOffset, CX + armOffset], legX: [CX - legOffset, CX + legOffset], torso }
+  const armOffset = b.shoulder / 2 - b.arm / 2 + 3
+  const legOffset = Math.max(b.hip / 4, b.leg / 2 + 3)
+  return { ...b, armX: [CX - armOffset, CX + armOffset], legX: [CX - legOffset, CX + legOffset] }
+}
+
+/** Rounded torso outline, grown by `pad` for clothes. `inset` cuts sleeveless arm holes. */
+function torsoPath(g: Geo, pad = 0, bottom = HIP_Y, inset = 0): string {
+  const s = g.shoulder / 2 + pad
+  const w = g.waist / 2 + pad
+  const h = g.hip / 2 + pad
+  const top = SHOULDER_Y
+  const mid = (top + WAIST_Y) / 2 + 8
+  const lower = `Q ${CX + h} ${WAIST_Y + 6} ${CX + h} ${bottom - 6} Q ${CX + h} ${bottom} ${CX + h - 6} ${bottom} L ${CX - h + 6} ${bottom} Q ${CX - h} ${bottom} ${CX - h} ${bottom - 6} Q ${CX - h} ${WAIST_Y + 6} ${CX - w} ${WAIST_Y}`
+  if (inset) {
+    return `M ${CX - s + inset} ${top} L ${CX + s - inset} ${top} Q ${CX + w - 2} ${top + inset} ${CX + w} ${WAIST_Y} ${lower} Q ${CX - w + 2} ${top + inset} ${CX - s + inset} ${top} Z`
+  }
+  return `M ${CX - s} ${top + 12} Q ${CX - s} ${top} ${CX - s + 12} ${top} L ${CX + s - 12} ${top} Q ${CX + s} ${top} ${CX + s} ${top + 12} Q ${CX + w} ${mid} ${CX + w} ${WAIST_Y} ${lower} Q ${CX - w} ${mid} ${CX - s} ${top + 12} Z`
 }
 
 /** Darken/lighten a hex colour by a factor (-1..1). */
@@ -69,20 +90,20 @@ function drawBackground(item: ShopItem): ReactNode {
       return (
         <>
           {rect(0, 0, 200, 300, main)}
-          {rect(0, 236, 200, 64, shade(main, -0.35))}
+          {rect(0, 248, 200, 52, shade(main, -0.35))}
           {rect(20, 60, 160, 6, shade(main, 0.15), 3)}
           {rect(14, 46, 12, 34, accent, 3)}
           {rect(174, 46, 12, 34, accent, 3)}
-          {rect(30, 236, 140, 2, shade(accent, -0.2))}
+          {rect(30, 248, 140, 2, shade(accent, -0.2))}
         </>
       )
     case 'bg-beach':
       return (
         <>
           {rect(0, 0, 200, 300, main)}
-          <circle cx={160} cy={46} r={20} fill="#ffe27a" />
-          {rect(0, 196, 200, 40, '#3aa3d9')}
-          {rect(0, 232, 200, 68, accent)}
+          <circle cx={164} cy={40} r={18} fill="#ffe27a" />
+          {rect(0, 206, 200, 42, '#3aa3d9')}
+          {rect(0, 244, 200, 56, accent)}
         </>
       )
     case 'bg-neon':
@@ -90,8 +111,8 @@ function drawBackground(item: ShopItem): ReactNode {
         <>
           {rect(0, 0, 200, 300, main)}
           {[40, 80, 120, 160].map((y) => rect(0, y, 200, 1.5, shade(accent, -0.3), 0, { key: y, opacity: 0.6 }))}
-          <circle cx={100} cy={120} r={86} fill="none" stroke={accent} strokeWidth={4} opacity={0.85} />
-          <circle cx={100} cy={120} r={92} fill="none" stroke="#4f8cff" strokeWidth={2} opacity={0.6} />
+          <circle cx={100} cy={140} r={88} fill="none" stroke={accent} strokeWidth={4} opacity={0.85} />
+          <circle cx={100} cy={140} r={94} fill="none" stroke="#4f8cff" strokeWidth={2} opacity={0.6} />
         </>
       )
     case 'bg-podium':
@@ -99,7 +120,7 @@ function drawBackground(item: ShopItem): ReactNode {
         <>
           {rect(0, 0, 200, 300, main)}
           <path d="M 100 0 L 40 300 L 160 300 Z" fill={shade(accent, -0.5)} opacity={0.35} />
-          {rect(30, 262, 140, 38, accent, 4)}
+          {rect(30, 258, 140, 42, accent, 4)}
           <text x={100} y={290} textAnchor="middle" fontSize={20} fontWeight={800} fill={shade(accent, -0.6)}>
             1
           </text>
@@ -109,15 +130,15 @@ function drawBackground(item: ShopItem): ReactNode {
       return (
         <>
           {rect(0, 0, 200, 300, main)}
-          <path d="M 0 300 L 0 200 Q 50 170 100 200 Q 150 230 200 190 L 200 300 Z" fill={accent} opacity={0.55} />
-          <path d="M 0 300 L 0 236 Q 60 210 120 236 Q 160 252 200 230 L 200 300 Z" fill={shade(accent, -0.3)} opacity={0.8} />
+          <path d="M 0 300 L 0 210 Q 50 180 100 210 Q 150 240 200 200 L 200 300 Z" fill={accent} opacity={0.55} />
+          <path d="M 0 300 L 0 246 Q 60 220 120 246 Q 160 262 200 240 L 200 300 Z" fill={shade(accent, -0.3)} opacity={0.8} />
         </>
       )
     default:
       return (
         <>
           {rect(0, 0, 200, 300, main)}
-          <circle cx={100} cy={130} r={92} fill={accent} />
+          <circle cx={100} cy={150} r={92} fill={accent} />
         </>
       )
   }
@@ -125,30 +146,42 @@ function drawBackground(item: ShopItem): ReactNode {
 
 function drawBottom(item: ShopItem, g: Geo): ReactNode {
   const { main, accent } = item
-  const outer = Math.max(g.hip / 2, g.legX[1] - CX + g.leg / 2) + 3
+  const [lx, rx] = g.legX
+  const w = g.waist / 2 + 1
   if (item.style === 'shorts') {
+    const ho = Math.max(g.hip / 2, rx - CX + g.leg / 2) + 4
+    const hem = LEG_TOP + 20
     return (
       <>
         <path
-          d={`M ${CX - g.waist / 2 - 2} ${WAIST_Y + 6} L ${CX + g.waist / 2 + 2} ${WAIST_Y + 6} L ${CX + outer} ${HIP_Y} L ${CX + outer + 1} 212 L ${CX + 3} 212 L ${CX} 192 L ${CX - 3} 212 L ${CX - outer - 1} 212 L ${CX - outer} ${HIP_Y} Z`}
+          d={`M ${CX - w} ${WAIST_Y + 2} L ${CX + w} ${WAIST_Y + 2} Q ${CX + ho} ${WAIST_Y + 4} ${CX + ho} ${HIP_Y} L ${CX + ho + 1} ${hem} L ${CX + 2} ${hem} L ${CX} ${LEG_TOP + 10} L ${CX - 2} ${hem} L ${CX - ho - 1} ${hem} L ${CX - ho} ${HIP_Y} Q ${CX - ho} ${WAIST_Y + 4} ${CX - w} ${WAIST_Y + 2} Z`}
           fill={main}
+          {...OL}
         />
-        {rect(CX - outer - 1, 207, outer - 2, 5, accent, 1)}
-        {rect(CX + 3, 207, outer - 2, 5, accent, 1)}
+        {rect(CX - ho - 1, hem - 5, ho - 3, 4, accent, 1)}
+        {rect(CX + 4, hem - 5, ho - 3, 4, accent, 1)}
       </>
     )
   }
-  const width = item.style === 'leggings' ? g.leg + 2 : g.leg + 6
+  const wd = item.style === 'leggings' ? g.leg + 2 : g.leg + 6
+  const ho = Math.max(g.hip / 2 + 2, rx - CX + wd / 2)
+  const end = LEG_END + 4
   return (
     <>
-      <path d={`M ${CX - g.waist / 2 - 2} ${WAIST_Y + 6} L ${CX + g.waist / 2 + 2} ${WAIST_Y + 6} L ${CX + outer} ${HIP_Y + 4} L ${CX - outer} ${HIP_Y + 4} Z`} fill={main} />
-      {g.legX.map((x, i) => (
-        <g key={i}>
-          {rect(x - width / 2, LEG_TOP, width, LEG_END - LEG_TOP + 2, main, width / 3)}
-          {item.style === 'joggers' && rect(x - width / 2, LEG_END - 6, width, 7, shade(main, -0.25), 3)}
-          {item.style === 'trackpants' && rect(x + (i === 0 ? -width / 2 + 1 : width / 2 - 4), LEG_TOP + 6, 3, LEG_END - LEG_TOP - 6, accent)}
-        </g>
-      ))}
+      <path
+        d={`M ${CX - w} ${WAIST_Y + 2} L ${CX + w} ${WAIST_Y + 2} Q ${CX + ho} ${WAIST_Y + 4} ${CX + ho} ${HIP_Y} L ${rx + wd / 2} ${end} L ${rx - wd / 2} ${end} L ${CX + 1} ${LEG_TOP + 14} L ${CX - 1} ${LEG_TOP + 14} L ${lx + wd / 2} ${end} L ${lx - wd / 2} ${end} L ${CX - ho} ${HIP_Y} Q ${CX - ho} ${WAIST_Y + 4} ${CX - w} ${WAIST_Y + 2} Z`}
+        fill={main}
+        {...OL}
+      />
+      {item.style === 'joggers' && g.legX.map((x, i) => rect(x - wd / 2 - 1, end - 7, wd + 2, 8, shade(main, -0.25), 3, { key: i, ...OL }))}
+      {item.style === 'trackpants' && (
+        <path
+          d={`M ${CX - ho + 3} ${HIP_Y} L ${lx - wd / 2 + 3} ${end - 1} M ${CX + ho - 3} ${HIP_Y} L ${rx + wd / 2 - 3} ${end - 1}`}
+          stroke={accent}
+          strokeWidth={3}
+          strokeLinecap="round"
+        />
+      )}
     </>
   )
 }
@@ -156,125 +189,134 @@ function drawBottom(item: ShopItem, g: Geo): ReactNode {
 function drawShoes(item: ShopItem, g: Geo): ReactNode {
   const { main, accent } = item
   return g.legX.map((x, i) => {
-    const dir = i === 0 ? -1 : 1
-    const fx = x + dir * 3
+    const fx = x + (i === 0 ? -3 : 3)
     return (
       <g key={i}>
-        {item.style === 'hightops' && rect(x - g.leg / 2 - 1, LEG_END - 14, g.leg + 2, 16, main, 4)}
-        <ellipse cx={fx} cy={LEG_END + 6} rx={g.leg / 2 + 6} ry={8} fill={main} />
-        {rect(fx - g.leg / 2 - 6, LEG_END + 9, g.leg + 12, 4, item.style === 'lifters' ? accent : shade(accent, 0), 2)}
-        {item.style === 'lifters' && rect(fx - g.leg / 2 - 2, LEG_END + 1, g.leg + 4, 3, '#eef1f6', 1.5)}
-        {item.style === 'sneakers' && <path d={`M ${fx - 4} ${LEG_END + 2} L ${fx + 4} ${LEG_END + 6}`} stroke={accent} strokeWidth={2} strokeLinecap="round" />}
+        {item.style === 'hightops' && rect(x - g.leg / 2 - 2, LEG_END - 10, g.leg + 4, 16, main, 5, OL)}
+        <ellipse cx={fx} cy={LEG_END + 7} rx={g.leg / 2 + 7} ry={9} fill={main} {...OL} />
+        {rect(fx - g.leg / 2 - 5, LEG_END + 11, g.leg + 10, 3.5, accent, 1.5)}
+        {item.style === 'lifters' && rect(fx - g.leg / 2 - 1, LEG_END + 1, g.leg + 2, 3.5, '#eef1f6', 1.5)}
+        {item.style === 'sneakers' && <path d={`M ${fx - 4} ${LEG_END + 4} L ${fx + 4} ${LEG_END + 8}`} stroke={accent} strokeWidth={2.5} strokeLinecap="round" />}
       </g>
     )
   })
 }
 
+/** Body part of a top; sleeves are drawn with the arms so they swing together. */
 function drawTop(item: ShopItem, g: Geo): ReactNode {
   const { main, accent } = item
-  const sleeve = (len: number, extra = 6) =>
-    g.armX.map((x, i) => rect(x - (g.arm + extra) / 2, SHOULDER_Y + 1, g.arm + extra, len, main, (g.arm + extra) / 2.5, { key: i }))
-  const neckline = <path d={`M ${CX - 10} ${SHOULDER_Y} Q ${CX} ${SHOULDER_Y + 10} ${CX + 10} ${SHOULDER_Y}`} fill="none" stroke={accent} strokeWidth={2.5} />
-  const torso = <path d={g.torso} fill={main} />
-
   switch (item.style) {
     case 'tank':
     case 'stringer': {
-      const inset = item.style === 'stringer' ? 16 : 11
-      const s = g.shoulder / 2
+      const stringer = item.style === 'stringer'
       return (
         <>
-          <path
-            d={`M ${CX - s + inset} ${SHOULDER_Y} L ${CX - 7} ${SHOULDER_Y} Q ${CX} ${SHOULDER_Y + (item.style === 'stringer' ? 22 : 12)} ${CX + 7} ${SHOULDER_Y} L ${CX + s - inset} ${SHOULDER_Y} L ${CX + g.waist / 2 + (item.style === 'stringer' ? -4 : 0)} ${WAIST_Y} L ${CX + g.hip / 2 - 1} ${HIP_Y - 2} L ${CX - g.hip / 2 + 1} ${HIP_Y - 2} L ${CX - g.waist / 2 - (item.style === 'stringer' ? -4 : 0)} ${WAIST_Y} Z`}
-            fill={main}
-          />
-          <path d={`M ${CX - g.hip / 2 + 2} ${HIP_Y - 4} L ${CX + g.hip / 2 - 2} ${HIP_Y - 4}`} stroke={accent} strokeWidth={2} />
+          <path d={torsoPath(g, 1, HIP_Y - 4, stringer ? 18 : 11)} fill={main} {...OL} />
+          {rect(CX - g.hip / 2 + 2, HIP_Y - 10, g.hip - 4, 2.5, accent, 1)}
         </>
       )
     }
     case 'compression':
       return (
         <>
-          {sleeve(ARM_END - SHOULDER_Y - 8, 2)}
-          {torso}
-          {neckline}
-          <path d={`M ${CX - g.shoulder / 2 + 6} ${SHOULDER_Y + 18} L ${CX + g.shoulder / 2 - 6} ${SHOULDER_Y + 18}`} stroke={accent} strokeWidth={3} />
+          <path d={torsoPath(g, 1, HIP_Y - 4)} fill={main} {...OL} />
+          {rect(CX - g.shoulder / 2 + 4, SHOULDER_Y + 16, g.shoulder - 8, 3.5, accent, 1)}
         </>
       )
     case 'hoodie':
       return (
         <>
-          {sleeve(ARM_END - SHOULDER_Y - 6, 7)}
-          {g.armX.map((x, i) => rect(x - (g.arm + 7) / 2, ARM_END - 12, g.arm + 7, 7, shade(main, -0.2), 3, { key: `c${i}` }))}
-          {torso}
-          {rect(CX - g.waist / 2 + 4, 126, g.waist - 8, 18, shade(main, -0.15), 6)}
-          <path d={`M ${CX - 5} ${SHOULDER_Y + 4} L ${CX - 5} ${SHOULDER_Y + 24} M ${CX + 5} ${SHOULDER_Y + 4} L ${CX + 5} ${SHOULDER_Y + 24}`} stroke={accent} strokeWidth={2} strokeLinecap="round" />
-          {rect(CX - g.hip / 2, HIP_Y - 7, g.hip, 7, shade(main, -0.2), 3)}
+          <path d={torsoPath(g, 3, HIP_Y + 2)} fill={main} {...OL} />
+          {rect(CX - g.waist / 2 + 4, 182, g.waist - 8, 16, shade(main, -0.15), 6, OL)}
+          <path d={`M ${CX - 6} ${SHOULDER_Y + 6} L ${CX - 6} ${SHOULDER_Y + 24} M ${CX + 6} ${SHOULDER_Y + 6} L ${CX + 6} ${SHOULDER_Y + 24}`} stroke={accent} strokeWidth={2.5} strokeLinecap="round" />
         </>
       )
     case 'jacket':
       return (
         <>
-          {sleeve(ARM_END - SHOULDER_Y - 6, 6)}
-          {g.armX.map((x, i) => rect(x - (g.arm + 6) / 2, SHOULDER_Y + 30, g.arm + 6, 3, accent, 1, { key: `s${i}` }))}
-          {torso}
-          <path d={`M ${CX} ${SHOULDER_Y + 4} L ${CX} ${HIP_Y - 2}`} stroke={accent} strokeWidth={2.5} />
-          <path d={`M ${CX - 12} ${SHOULDER_Y - 2} L ${CX} ${SHOULDER_Y + 10} L ${CX + 12} ${SHOULDER_Y - 2}`} fill="none" stroke={accent} strokeWidth={3} strokeLinejoin="round" />
-          <path d={`M ${CX - g.shoulder / 2 + 4} ${SHOULDER_Y + 30} L ${CX - 4} ${SHOULDER_Y + 30} M ${CX + 4} ${SHOULDER_Y + 30} L ${CX + g.shoulder / 2 - 4} ${SHOULDER_Y + 30}`} stroke={accent} strokeWidth={3} />
+          <path d={torsoPath(g, 3, HIP_Y + 1)} fill={main} {...OL} />
+          <path d={`M ${CX} ${SHOULDER_Y + 6} L ${CX} ${HIP_Y}`} stroke={accent} strokeWidth={2.5} />
+          <path d={`M ${CX - g.shoulder / 2} ${SHOULDER_Y + 22} L ${CX - 4} ${SHOULDER_Y + 22} M ${CX + 4} ${SHOULDER_Y + 22} L ${CX + g.shoulder / 2} ${SHOULDER_Y + 22}`} stroke={accent} strokeWidth={3} />
         </>
       )
     default: // tee
+      return <path d={torsoPath(g, 2, HIP_Y - 3)} fill={main} {...OL} />
+  }
+}
+
+/** Hood behind the head. */
+function drawTopBack(item: ShopItem, g: Geo): ReactNode {
+  if (item.style !== 'hoodie') return null
+  return <ellipse cx={CX} cy={SHOULDER_Y + 2} rx={g.shoulder / 2 + 8} ry={16} fill={shade(item.main, -0.2)} {...OL} />
+}
+
+/** Sleeve in arm coordinates: shoulder at (0, 0), hand at (0, ARM_LEN). */
+function drawSleeve(item: ShopItem, a: number): ReactNode {
+  const { main, accent } = item
+  switch (item.style) {
+    case 'tee':
+      return rect(-(a + 7) / 2, -7, a + 7, 20, main, 8, OL)
+    case 'compression':
+      return rect(-(a + 3) / 2, -6, a + 3, ARM_LEN - 6, main, (a + 3) / 2, OL)
+    case 'hoodie':
       return (
         <>
-          {sleeve(34)}
-          {torso}
-          {neckline}
+          {rect(-(a + 8) / 2, -7, a + 8, ARM_LEN - 1, main, 8, OL)}
+          {rect(-(a + 8) / 2, ARM_LEN - 11, a + 8, 8, shade(main, -0.2), 3, OL)}
         </>
       )
+    case 'jacket':
+      return (
+        <>
+          {rect(-(a + 7) / 2, -7, a + 7, ARM_LEN - 2, main, 8, OL)}
+          {rect(-(a + 7) / 2 + 1.5, 12, a + 4, 4, accent, 1)}
+        </>
+      )
+    default:
+      return null
   }
+}
+
+function drawWrists(item: ShopItem, a: number): ReactNode {
+  return (
+    <>
+      {rect(-(a + 5) / 2, ARM_LEN - 14, a + 5, item.style === 'wraps' ? 12 : 8, item.main, 3, OL)}
+      {item.style === 'wraps' && rect(-(a + 5) / 2 + 1, ARM_LEN - 9, a + 3, 2.5, item.accent)}
+    </>
+  )
 }
 
 function drawWaist(item: ShopItem, g: Geo): ReactNode {
   const w = g.waist + 10
   return (
     <>
-      {rect(CX - w / 2, WAIST_Y - 6, w, 14, item.main, 3)}
-      {rect(CX - 7, WAIST_Y - 7, 14, 16, item.accent, 2)}
-      {rect(CX - 3, WAIST_Y - 3, 6, 8, item.main, 1)}
+      {rect(CX - w / 2, WAIST_Y - 7, w, 14, item.main, 4, OL)}
+      {rect(CX - 8, WAIST_Y - 8, 16, 16, item.accent, 3, OL)}
+      {rect(CX - 3, WAIST_Y - 3, 6, 6, item.main, 1)}
     </>
   )
 }
 
-function drawWrists(item: ShopItem, g: Geo): ReactNode {
-  return g.armX.map((x, i) => (
-    <g key={i}>
-      {rect(x - g.arm / 2 - 2, ARM_END - 16, g.arm + 4, item.style === 'wraps' ? 12 : 8, item.main, 3)}
-      {item.style === 'wraps' && rect(x - g.arm / 2 - 2, ARM_END - 12, g.arm + 4, 2, item.accent)}
-    </g>
-  ))
-}
-
-function drawNeck(item: ShopItem, g: Geo): ReactNode {
+function drawNeck(item: ShopItem): ReactNode {
   if (item.style === 'towel') {
-    const x = g.armX[1]
     return (
       <>
-        {rect(CX + 4, SHOULDER_Y - 4, x - CX + 4, 10, item.main, 4)}
-        {rect(x - 2, SHOULDER_Y - 2, 12, 44, item.main, 4)}
-        {rect(x - 2, SHOULDER_Y + 34, 12, 3, item.accent)}
+        {rect(CX - 24, SHOULDER_Y, 15, 40, item.main, 6, OL)}
+        {rect(CX + 9, SHOULDER_Y, 15, 48, item.main, 6, OL)}
+        {rect(CX + 10, SHOULDER_Y + 38, 13, 3, item.accent)}
       </>
     )
   }
   return (
     <>
-      <path d={`M ${CX - 14} ${SHOULDER_Y - 2} Q ${CX} ${SHOULDER_Y + 26} ${CX + 14} ${SHOULDER_Y - 2}`} fill="none" stroke={item.main} strokeWidth={3} strokeDasharray="2 1.5" />
+      <path d={`M ${CX - 22} ${SHOULDER_Y + 2} Q ${CX} ${SHOULDER_Y + 38} ${CX + 22} ${SHOULDER_Y + 2}`} fill="none" stroke={item.main} strokeWidth={3.5} strokeDasharray="3 1.5" />
       {item.style === 'platechain' ? (
         <>
-          <circle cx={CX} cy={SHOULDER_Y + 16} r={7} fill={item.accent} stroke={item.main} strokeWidth={2} />
-          <circle cx={CX} cy={SHOULDER_Y + 16} r={2} fill={item.main} />
+          <circle cx={CX} cy={SHOULDER_Y + 22} r={8} fill={item.accent} stroke={item.main} strokeWidth={2.5} />
+          <circle cx={CX} cy={SHOULDER_Y + 22} r={2.5} fill={item.main} />
         </>
       ) : (
-        <circle cx={CX} cy={SHOULDER_Y + 14} r={4} fill={item.accent} stroke={item.main} strokeWidth={1.5} />
+        <circle cx={CX} cy={SHOULDER_Y + 20} r={5} fill={item.accent} stroke={item.main} strokeWidth={2} />
       )}
     </>
   )
@@ -283,15 +325,16 @@ function drawNeck(item: ShopItem, g: Geo): ReactNode {
 function drawFace(item: ShopItem): ReactNode {
   const lens = (x: number) =>
     item.style === 'aviators' ? (
-      <path key={x} d={`M ${x - 9} 46 L ${x + 9} 46 Q ${x + 9} 60 ${x} 60 Q ${x - 9} 60 ${x - 9} 46 Z`} fill={item.main} stroke={item.accent} strokeWidth={1.5} />
+      <path key={x} d={`M ${x - 14} ${EYE_Y - 8} L ${x + 14} ${EYE_Y - 8} Q ${x + 14} ${EYE_Y + 12} ${x} ${EYE_Y + 12} Q ${x - 14} ${EYE_Y + 12} ${x - 14} ${EYE_Y - 8} Z`} fill={item.main} stroke={item.accent} strokeWidth={2.5} />
     ) : (
-      rect(x - 9, 45, 18, 11, item.main, 4, { key: x })
+      rect(x - 14, EYE_Y - 9, 28, 18, item.main, 7, { key: x, ...OL })
     )
   return (
     <>
-      {lens(CX - 10)}
-      {lens(CX + 10)}
-      <path d={`M ${CX - 2} 49 L ${CX + 2} 49`} stroke={item.style === 'aviators' ? item.accent : item.main} strokeWidth={2} />
+      {lens(CX - 20)}
+      {lens(CX + 20)}
+      <path d={`M ${CX - 6} ${EYE_Y - 4} L ${CX + 6} ${EYE_Y - 4}`} stroke={item.style === 'aviators' ? item.accent : INK} strokeWidth={2.5} />
+      <path d={`M ${CX - 28} ${EYE_Y - 3} L ${CX - 22} ${EYE_Y - 7} M ${CX + 12} ${EYE_Y - 3} L ${CX + 18} ${EYE_Y - 7}`} stroke="#ffffff" strokeWidth={2} strokeLinecap="round" opacity={0.6} />
     </>
   )
 }
@@ -302,42 +345,42 @@ function drawHead(item: ShopItem): ReactNode {
     case 'headband':
       return (
         <>
-          {rect(CX - 26, 34, 52, 8, main, 3)}
-          {rect(CX + 20, 36, 10, 14, main, 3)}
+          <path d={`M ${CX - 57} 82 Q ${CX} 62 ${CX + 57} 82 L ${CX + 57} 94 Q ${CX} 74 ${CX - 57} 94 Z`} fill={main} {...OL} />
+          <path d={`M ${CX + 54} 86 q 12 4 14 18 M ${CX + 54} 88 q 6 8 4 20`} fill="none" stroke={main} strokeWidth={5} strokeLinecap="round" />
         </>
       )
     case 'cap':
       return (
         <>
-          <path d={`M ${CX - 27} 40 Q ${CX - 27} 16 ${CX} 16 Q ${CX + 27} 16 ${CX + 27} 40 Z`} fill={main} />
-          <ellipse cx={CX + 4} cy={40} rx={32} ry={5} fill={shade(main, -0.25)} />
-          <circle cx={CX} cy={17} r={2.5} fill={accent} />
-          {rect(CX - 6, 26, 12, 7, accent, 2)}
+          <path d={`M ${CX - 60} 86 C ${CX - 62} 20 ${CX + 62} 20 ${CX + 60} 86 Z`} fill={main} {...OL} />
+          <ellipse cx={CX + 10} cy={86} rx={66} ry={9} fill={shade(main, -0.25)} {...OL} />
+          <circle cx={CX} cy={38} r={4} fill={accent} />
+          {rect(CX - 10, 56, 20, 13, accent, 3)}
         </>
       )
     case 'beanie':
       return (
         <>
-          <path d={`M ${CX - 27} 42 Q ${CX - 27} 12 ${CX} 12 Q ${CX + 27} 12 ${CX + 27} 42 Z`} fill={main} />
-          {rect(CX - 28, 34, 56, 10, accent, 4)}
-          <circle cx={CX} cy={11} r={6} fill={accent} />
+          <path d={`M ${CX - 61} 90 C ${CX - 63} 16 ${CX + 63} 16 ${CX + 61} 90 Z`} fill={main} {...OL} />
+          {rect(CX - 62, 78, 124, 16, accent, 7, OL)}
+          <circle cx={CX} cy={30} r={10} fill={accent} {...OL} />
         </>
       )
     case 'headphones':
       return (
         <>
-          <path d={`M ${CX - 27} 52 Q ${CX - 30} 14 ${CX} 14 Q ${CX + 30} 14 ${CX + 27} 52`} fill="none" stroke={main} strokeWidth={5} />
-          {rect(CX - 34, 42, 12, 20, accent, 5)}
-          {rect(CX + 22, 42, 12, 20, accent, 5)}
+          <path d={`M ${CX - 62} 108 C ${CX - 70} 18 ${CX + 70} 18 ${CX + 62} 108`} fill="none" stroke={main} strokeWidth={7} />
+          {rect(CX - 72, 92, 17, 30, accent, 7, OL)}
+          {rect(CX + 55, 92, 17, 30, accent, 7, OL)}
         </>
       )
     case 'crown':
       return (
         <>
-          <path d={`M ${CX - 22} 30 L ${CX - 24} 10 L ${CX - 12} 22 L ${CX} 6 L ${CX + 12} 22 L ${CX + 24} 10 L ${CX + 22} 30 Z`} fill={main} stroke={shade(main, -0.3)} strokeWidth={1.5} />
-          <circle cx={CX} cy={22} r={3} fill={accent} />
-          <circle cx={CX - 13} cy={25} r={2} fill="#4f8cff" />
-          <circle cx={CX + 13} cy={25} r={2} fill="#34c77b" />
+          <path d={`M ${CX - 30} 52 L ${CX - 34} 18 L ${CX - 16} 34 L ${CX} 10 L ${CX + 16} 34 L ${CX + 34} 18 L ${CX + 30} 52 Z`} fill={main} {...OL} />
+          <circle cx={CX} cy={38} r={4} fill={accent} />
+          <circle cx={CX - 17} cy={43} r={2.5} fill="#4f8cff" />
+          <circle cx={CX + 17} cy={43} r={2.5} fill="#34c77b" />
         </>
       )
     default:
@@ -348,40 +391,68 @@ function drawHead(item: ShopItem): ReactNode {
 // ---------------------------------------------------------------- body
 
 function hairBack(style: AvatarLook['hairStyle'], color: string): ReactNode {
-  if (style === 'long') return rect(CX - 28, 36, 56, 64, color, 18)
-  if (style === 'ponytail') return rect(CX + 18, 40, 12, 46, color, 6)
-  return null
+  switch (style) {
+    case 'long':
+      return rect(CX - 63, 70, 126, 108, color, 30, OL)
+    case 'ponytail':
+      return (
+        <>
+          <ellipse cx={CX + 62} cy={128} rx={14} ry={32} fill={color} transform={`rotate(-18 ${CX + 62} 128)`} {...OL} />
+          <circle cx={CX + 54} cy={98} r={6} fill="#e47aa8" {...OL} />
+        </>
+      )
+    case 'bun':
+      return <circle cx={CX} cy={44} r={20} fill={color} {...OL} />
+    case 'curly':
+      return <ellipse cx={CX} cy={HEAD_CY - 4} rx={HEAD_RX + 8} ry={HEAD_RY + 6} fill={color} {...OL} />
+    default:
+      return null
+  }
 }
 
 function hairFront(style: AvatarLook['hairStyle'], color: string): ReactNode {
   switch (style) {
     case 'short':
-      return <path d={`M ${CX - 26} 46 Q ${CX - 28} 20 ${CX} 22 Q ${CX + 28} 20 ${CX + 26} 46 Q ${CX + 18} 32 ${CX} 34 Q ${CX - 18} 32 ${CX - 26} 46 Z`} fill={color} />
+    case 'bun':
+      return (
+        <path
+          d={`M ${CX - 59} 108 C ${CX - 64} 18 ${CX + 64} 18 ${CX + 59} 108 Q ${CX + 54} 84 ${CX + 40} 78 Q ${CX + 30} 88 ${CX + 18} 74 Q ${CX + 4} 88 ${CX - 10} 74 Q ${CX - 24} 88 ${CX - 36} 76 Q ${CX - 52} 84 ${CX - 59} 108 Z`}
+          fill={color}
+          {...OL}
+        />
+      )
     case 'buzz':
-      return <path d={`M ${CX - 25} 44 Q ${CX - 25} 24 ${CX} 24 Q ${CX + 25} 24 ${CX + 25} 44 Q ${CX} 32 ${CX - 25} 44 Z`} fill={color} opacity={0.75} />
+      return <path d={`M ${CX - 58} 98 C ${CX - 62} 22 ${CX + 62} 22 ${CX + 58} 98 Q ${CX + 50} 70 ${CX} 68 Q ${CX - 50} 70 ${CX - 58} 98 Z`} fill={color} opacity={0.85} />
     case 'curly':
       return (
-        <g fill={color}>
-          {[-22, -12, 0, 12, 22].map((dx) => (
-            <circle key={dx} cx={CX + dx} cy={28 + Math.abs(dx) / 3} r={10} />
+        <g fill={color} {...OL}>
+          {[-48, -30, -12, 6, 24, 42].map((dx) => (
+            <circle key={dx} cx={CX + dx + 3} cy={66 - Math.cos((dx / 60) * 1.4) * 14} r={14} />
           ))}
-          <circle cx={CX - 25} cy={42} r={7} />
-          <circle cx={CX + 25} cy={42} r={7} />
         </g>
       )
     case 'long':
     case 'ponytail':
-      return <path d={`M ${CX - 27} 50 Q ${CX - 30} 20 ${CX} 22 Q ${CX + 30} 20 ${CX + 27} 50 Q ${CX + 22} 30 ${CX} 32 Q ${CX - 22} 30 ${CX - 27} 50 Z`} fill={color} />
-    case 'bun':
       return (
-        <>
-          <circle cx={CX} cy={20} r={10} fill={color} />
-          <path d={`M ${CX - 26} 46 Q ${CX - 28} 22 ${CX} 24 Q ${CX + 28} 22 ${CX + 26} 46 Q ${CX + 18} 32 ${CX} 33 Q ${CX - 18} 32 ${CX - 26} 46 Z`} fill={color} />
-        </>
+        <path
+          d={`M ${CX - 60} 124 C ${CX - 68} 16 ${CX + 68} 16 ${CX + 60} 124 L ${CX + 50} 124 Q ${CX + 50} 86 ${CX + 22} 74 Q ${CX - 8} 92 ${CX - 38} 80 Q ${CX - 50} 96 ${CX - 50} 124 Z`}
+          fill={color}
+          {...OL}
+        />
       )
-    default:
-      return null
+    default: // bald: a little shine
+      return <ellipse cx={CX - 22} cy={62} rx={12} ry={6} fill="#ffffff" opacity={0.3} transform={`rotate(-20 ${CX - 22} 62)`} />
   }
+}
+
+function drawEye(x: number): ReactNode {
+  return (
+    <g className="av-eye" key={x}>
+      <ellipse cx={x} cy={EYE_Y} rx={6.5} ry={8.5} fill={INK} />
+      <circle cx={x + 2} cy={EYE_Y - 3} r={2.6} fill="#ffffff" />
+      <circle cx={x - 2} cy={EYE_Y + 3.5} r={1.2} fill="#ffffff" />
+    </g>
+  )
 }
 
 interface Props {
@@ -390,12 +461,16 @@ interface Props {
   preview?: ShopItem | null
   size?: number
   className?: string
+  /** Idle animation: breathing, blinking, swaying arms. */
+  animated?: boolean
+  /** Happy hop (e.g. after buying something). Change `key` to replay it. */
+  cheer?: boolean
 }
 
-export function Avatar({ look, preview, size = 200, className }: Props) {
+export function Avatar({ look, preview, size = 200, className, animated = false, cheer = false }: Props) {
   const g = geometry(look.bodyType)
   const skin = look.skinTone
-  const skinShade = shade(skin, -0.12)
+  const skinShade = shade(skin, -0.1)
   const itemIn = (slot: Slot): ShopItem | undefined => {
     if (preview?.slot === slot) return preview
     const id = look.equipped[slot]
@@ -404,46 +479,58 @@ export function Avatar({ look, preview, size = 200, className }: Props) {
   const [bg, top, bottom, shoes, head, face, neck, waist, wrists] = (
     ['background', 'top', 'bottom', 'shoes', 'head', 'face', 'neck', 'waist', 'wrists'] as Slot[]
   ).map(itemIn)
-  const hideHairTop = head && (head.style === 'cap' || head.style === 'beanie')
+  const classes = [className, animated && 'av-anim', cheer && 'av-cheer'].filter(Boolean).join(' ')
 
   return (
-    <svg viewBox="0 0 200 300" width={size} height={(size * 3) / 2} className={className} role="img" aria-label="Your lifter avatar">
+    <svg viewBox="0 0 200 300" width={size} height={(size * 3) / 2} className={classes} role="img" aria-label="Your lifter avatar">
       {bg ? drawBackground(bg) : rect(0, 0, 200, 300, 'var(--color-surface-2)')}
+      <ellipse className="av-shadow" cx={CX} cy={GROUND} rx={46} ry={6} fill="#000000" opacity={0.2} />
 
-      {hairBack(look.hairStyle, look.hairColor)}
-
-      {/* legs */}
-      {g.legX.map((x, i) => rect(x - g.leg / 2, LEG_TOP, g.leg, LEG_END - LEG_TOP + 4, skinShade, g.leg / 2, { key: i }))}
-      {shoes ? drawShoes(shoes, g) : g.legX.map((x, i) => <ellipse key={i} cx={x + (i ? 3 : -3)} cy={LEG_END + 5} rx={g.leg / 2 + 3} ry={6} fill={skinShade} />)}
-      {bottom && drawBottom(bottom, g)}
-
-      {/* arms */}
-      {g.armX.map((x, i) => (
-        <g key={i}>
-          {rect(x - g.arm / 2, SHOULDER_Y + 2, g.arm, ARM_END - SHOULDER_Y, skinShade, g.arm / 2)}
-          <circle cx={x} cy={ARM_END + 4} r={g.arm / 2 + 2} fill={skin} />
+      <g className="av-body">
+        <g className="av-head">
+          {hairBack(look.hairStyle, look.hairColor)}
+          {top && drawTopBack(top, g)}
         </g>
-      ))}
 
-      {/* torso and neck */}
-      <path d={g.torso} fill={skin} />
-      {rect(CX - 8, 66, 16, 24, skinShade, 4)}
-      {top && drawTop(top, g)}
-      {waist && drawWaist(waist, g)}
-      {wrists && drawWrists(wrists, g)}
-      {neck && drawNeck(neck, g)}
+        {/* legs */}
+        {g.legX.map((x, i) => rect(x - g.leg / 2, LEG_TOP, g.leg, LEG_END - LEG_TOP + 4, skinShade, g.leg / 2, { key: i, ...OL }))}
+        {shoes ? drawShoes(shoes, g) : g.legX.map((x, i) => <ellipse key={i} cx={x + (i ? 3 : -3)} cy={LEG_END + 6} rx={g.leg / 2 + 4} ry={7} fill={skin} {...OL} />)}
 
-      {/* head */}
-      <circle cx={CX} cy={50} r={26} fill={skin} />
-      <circle cx={CX - 26} cy={52} r={5} fill={skinShade} />
-      <circle cx={CX + 26} cy={52} r={5} fill={skinShade} />
-      <circle cx={CX - 9} cy={50} r={3} fill="#1b1e25" />
-      <circle cx={CX + 9} cy={50} r={3} fill="#1b1e25" />
-      <path d={`M ${CX - 14} 42 L ${CX - 5} 41 M ${CX + 5} 41 L ${CX + 14} 42`} stroke={shade(look.hairColor, -0.1)} strokeWidth={2.5} strokeLinecap="round" />
-      <path d={`M ${CX - 8} 62 Q ${CX} 68 ${CX + 8} 62`} fill="none" stroke="#7a3b2a" strokeWidth={2.5} strokeLinecap="round" />
-      {!hideHairTop && hairFront(look.hairStyle, look.hairColor)}
-      {face && drawFace(face)}
-      {head && drawHead(head)}
+        {/* torso */}
+        <path d={torsoPath(g)} fill={skin} {...OL} />
+        {bottom && drawBottom(bottom, g)}
+        {top && drawTop(top, g)}
+        {waist && drawWaist(waist, g)}
+        {neck && drawNeck(neck)}
+
+        {/* arms, in front of the body so they can swing */}
+        {g.armX.map((x, i) => (
+          <g key={i} transform={`translate(${x} ${ARM_TOP}) rotate(${i === 0 ? 10 : -10})`}>
+            <g className={i === 0 ? 'av-arm-l' : 'av-arm-r'}>
+              {rect(-g.arm / 2, -6, g.arm, ARM_LEN + 2, skinShade, g.arm / 2, OL)}
+              {top && drawSleeve(top, g.arm)}
+              {wrists && drawWrists(wrists, g.arm)}
+              <circle cx={0} cy={ARM_LEN} r={g.arm / 2 + 3} fill={skin} {...OL} />
+            </g>
+          </g>
+        ))}
+
+        {/* head */}
+        <g className="av-head">
+          <circle cx={CX - HEAD_RX + 2} cy={HEAD_CY + 10} r={9} fill={skinShade} {...OL} />
+          <circle cx={CX + HEAD_RX - 2} cy={HEAD_CY + 10} r={9} fill={skinShade} {...OL} />
+          <ellipse cx={CX} cy={HEAD_CY} rx={HEAD_RX} ry={HEAD_RY} fill={skin} {...OL} />
+          <ellipse cx={CX - 34} cy={EYE_Y + 14} rx={8} ry={5} fill="#ff7b93" opacity={0.4} />
+          <ellipse cx={CX + 34} cy={EYE_Y + 14} rx={8} ry={5} fill="#ff7b93" opacity={0.4} />
+          {drawEye(CX - 20)}
+          {drawEye(CX + 20)}
+          <path d={`M ${CX - 27} ${EYE_Y - 14} Q ${CX - 20} ${EYE_Y - 19} ${CX - 13} ${EYE_Y - 14} M ${CX + 13} ${EYE_Y - 14} Q ${CX + 20} ${EYE_Y - 19} ${CX + 27} ${EYE_Y - 14}`} fill="none" stroke={shade(look.hairColor, -0.1)} strokeWidth={3} strokeLinecap="round" />
+          <path d={`M ${CX - 7} ${EYE_Y + 15} Q ${CX} ${EYE_Y + 25} ${CX + 7} ${EYE_Y + 15} Z`} fill="#8a3442" stroke={INK} strokeWidth={2} strokeLinejoin="round" />
+          {hairFront(look.hairStyle, look.hairColor)}
+          {face && drawFace(face)}
+          {head && drawHead(head)}
+        </g>
+      </g>
     </svg>
   )
 }

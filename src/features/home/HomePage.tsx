@@ -19,7 +19,6 @@ import { weekStreak } from '../../domain/streak'
 import { weeklyRate, withSevenDayAverage } from '../../domain/bodyweight'
 import { formatKg, formatNumber } from '../../lib/format'
 import { useWeekStats } from './useWeekStats'
-import { LifterCard } from '../avatar/LifterCard'
 
 const BACKUP_REMINDER_DAYS = 7
 
@@ -87,7 +86,6 @@ export function HomePage() {
           </Link>
         )}
 
-        <LifterCard />
 
         <section className="card">
           <div className="text-xs text-muted uppercase">{format(today, 'EEEE, d MMM')}</div>

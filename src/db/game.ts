@@ -81,14 +81,14 @@ export async function workoutRewards(workoutId: string): Promise<WorkoutRewards>
 
 export type BuyResult = { ok: true } | { ok: false; reason: string }
 
-/** Buys an item with coins and puts it on. */
+/** Buys an item with potatoes and puts it on. */
 export async function buyItem(itemId: string): Promise<BuyResult> {
   const item = ITEMS_BY_ID.get(itemId)
   if (!item || item.price == null) return { ok: false, reason: 'This item isn’t for sale.' }
   const state = await loadGameState()
   if (state.owned.has(itemId)) return { ok: false, reason: 'You already own this.' }
   if (state.ledger.balance < item.price) {
-    return { ok: false, reason: `You need ${item.price - Math.max(0, state.ledger.balance)} more coins.` }
+    return { ok: false, reason: `You need ${item.price - Math.max(0, state.ledger.balance)} more ${item.price - Math.max(0, state.ledger.balance) === 1 ? 'potato' : 'potatoes'}.` }
   }
   await db.purchases.add({ itemId, price: item.price, purchasedAt: Date.now() })
   await equipItem(item.slot, itemId)

@@ -266,7 +266,7 @@ describe('avatar game', () => {
 
   it('buys and equips items only with enough coins', async () => {
     const { loadGameState, buyItem } = await import('./game')
-    expect(await buyItem('tee-black')).toEqual({ ok: false, reason: 'You need 3 more coins.' })
+    expect(await buyItem('tee-black')).toEqual({ ok: false, reason: 'You need 3 more potatoes.' })
     expect((await buyItem('headband-rookie')).ok).toBe(false) // achievement items aren't for sale
     await logVolume('leg-press', Array.from({ length: 10 }, () => [300, 10] as [number, number])) // 30,000 kg → 3 coins
     expect(await buyItem('tee-black')).toEqual({ ok: true })

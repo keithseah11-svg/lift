@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { format } from 'date-fns'
 import { buyItem, equipItem, updateLook, useGame, type GameState } from '../../db/game'
@@ -50,6 +50,16 @@ export function AvatarPage() {
   const tab = (TABS.find((t) => t.key === params.get('tab'))?.key ?? 'shop') as Tab
   const [preview, setPreview] = useState<ShopItem | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  // Bumped to replay the happy hop.
+  const [cheers, setCheers] = useState(0)
+  const [cheering, setCheering] = useState(false)
+  const hopTimer = useRef<number | undefined>(undefined)
+  const hop = () => {
+    setCheers((n) => n + 1)
+    setCheering(true)
+    window.clearTimeout(hopTimer.current)
+    hopTimer.current = window.setTimeout(() => setCheering(false), 1700)
+  }
 
   if (!game) return null
   const { ledger, look } = game
@@ -63,31 +73,34 @@ export function AvatarPage() {
   const buy = async (item: ShopItem) => {
     const result = await buyItem(item.id)
     setMessage(result.ok ? `Bought ${item.name}! It’s on now.` : result.reason)
-    if (result.ok) setPreview(null)
+    if (result.ok) {
+      setPreview(null)
+      hop()
+    }
   }
 
   return (
     <div className="pb-6">
-      <PageHeader title="Your lifter" back />
+      <PageHeader title="Profile" />
       <div className="space-y-3 px-4">
-        <section className="card flex items-center gap-4">
-          <Avatar look={look} preview={preview} size={130} className="shrink-0 rounded-2xl" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <div>
-              <div className="text-xs text-muted">Coins</div>
-              <div className="text-3xl font-bold">🪙 {Math.max(0, ledger.balance)}</div>
+        <section className="card space-y-3">
+          <button className="mx-auto block" onClick={hop} aria-label="Make your lifter jump">
+            <Avatar key={cheers} look={look} preview={preview} size={170} animated cheer={cheering} className="block rounded-2xl" />
+          </button>
+          <div className="flex items-baseline justify-between">
+            <div className="text-3xl font-bold">
+              🥔 {Math.max(0, ledger.balance)} <span className="text-base font-semibold text-muted">{Math.max(0, ledger.balance) === 1 ? 'potato' : 'potatoes'}</span>
             </div>
-            <div>
-              <div className="mb-1 text-xs text-muted">
-                {ledger.kgToNextCoin.toLocaleString()} kg to the next coin
-              </div>
-              <ProgressBar value={KG_PER_COIN - ledger.kgToNextCoin} max={KG_PER_COIN} tone="warn" />
-            </div>
-            <p className="text-[11px] text-muted">
-              1 coin per {KG_PER_COIN.toLocaleString()} kg lifted
-              {settings.coinsSince ? ` since ${format(settings.coinsSince, 'd MMM yyyy')}` : ''}.
-            </p>
+            <div className="text-sm text-muted">🏆 {game.unlocked.size}</div>
           </div>
+          <div>
+            <div className="mb-1 text-xs text-muted">{ledger.kgToNextCoin.toLocaleString()} kg to the next potato</div>
+            <ProgressBar value={KG_PER_COIN - ledger.kgToNextCoin} max={KG_PER_COIN} tone="warn" />
+          </div>
+          <p className="text-[11px] text-muted">
+            1 potato per {KG_PER_COIN.toLocaleString()} kg lifted
+            {settings.coinsSince ? ` since ${format(settings.coinsSince, 'd MMM yyyy')}` : ''}.
+          </p>
         </section>
 
         <div className="grid grid-cols-4 rounded-xl bg-surface p-1 text-sm font-semibold">
@@ -176,7 +189,7 @@ function Shop({
                 ) : (
                   <span className="flex justify-between">
                     <span className={RARITY_COLOR[item.rarity]}>{RARITY_LABELS[item.rarity]}</span>
-                    <span className="font-semibold">🪙 {item.price}</span>
+                    <span className="font-semibold">🥔 {item.price}</span>
                   </span>
                 )
               }
@@ -197,7 +210,7 @@ function Shop({
             </button>
           ) : (
             <button className="btn-primary w-full" disabled={balance < preview.price!} onClick={() => onBuy(preview)}>
-              {balance >= preview.price! ? `Buy for 🪙 ${preview.price}` : `Need 🪙 ${preview.price! - balance} more`}
+              {balance >= preview.price! ? `Buy for 🥔 ${preview.price}` : `Need 🥔 ${preview.price! - balance} more`}
             </button>
           )}
         </div>
