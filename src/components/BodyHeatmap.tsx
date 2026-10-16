@@ -1,10 +1,11 @@
 import { useState, type ReactElement } from 'react'
 import { MUSCLE_LABELS, type Muscle } from '../domain/muscles'
 import { formatNumber } from '../lib/format'
+import { targetStatus, type ResolvedTargets, type TargetStatus } from '../domain/muscleTargets'
 
 interface Props {
   counts: Partial<Record<Muscle, number>>
-  target: { min: number; max: number }
+  targets: ResolvedTargets
 }
 
 type Shape = ReactElement<SVGElement>
@@ -44,29 +45,23 @@ interface ShapeProps {
   strokeWidth: number
 }
 
-type Status = 'none' | 'under' | 'in' | 'over'
-
-function status(n: number, target: { min: number; max: number }): Status {
-  if (n <= 0) return 'none'
-  if (n < target.min) return 'under'
-  return n > target.max ? 'over' : 'in'
-}
-
-const STATUS_COLOR: Record<Status, string> = {
+const STATUS_COLOR: Record<TargetStatus, string> = {
+  off: 'var(--color-surface-2)',
   none: 'var(--color-surface-2)',
   under: 'var(--color-warn)',
   in: 'var(--color-good)',
   over: 'var(--color-bad)',
 }
 
-export function BodyHeatmap({ counts, target }: Props) {
+export function BodyHeatmap({ counts, targets }: Props) {
   const [selected, setSelected] = useState<Muscle | null>(null)
 
   const shapeProps = (m: Muscle): ShapeProps => {
     const n = counts[m] ?? 0
-    const st = status(n, target)
+    const target = targets[m]
+    const st = targetStatus(n, target)
     // Under-target muscles fade in as they approach the minimum.
-    const opacity = st === 'under' ? 0.35 + 0.65 * Math.min(1, n / target.min) : 1
+    const opacity = st === 'under' && target ? 0.35 + 0.65 * Math.min(1, n / target.min) : 1
     return {
       fill: STATUS_COLOR[st],
       fillOpacity: opacity,
@@ -108,7 +103,12 @@ export function BodyHeatmap({ counts, target }: Props) {
             <span className="font-semibold">{MUSCLE_LABELS[selected]}</span>{' '}
             <span className="text-muted">
               {formatNumber(counts[selected] ?? 0)} sets ·{' '}
-              {{ none: 'not trained yet', under: 'under target', in: 'in range', over: 'over target' }[status(counts[selected] ?? 0, target)]}
+              {targets[selected] ? `of ${targets[selected].min}–${targets[selected].max} · ` : ''}
+              {
+                { off: 'not tracked', none: 'not trained yet', under: 'under target', in: 'in range', over: 'over target' }[
+                  targetStatus(counts[selected] ?? 0, targets[selected])
+                ]
+              }
             </span>
           </>
         ) : (

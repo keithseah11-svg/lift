@@ -67,3 +67,48 @@ describe('photo files', () => {
     expect(fitWithin(800, 600, 1600)).toEqual({ width: 800, height: 600 })
   })
 })
+
+import { countedSecondaryMuscles, muscleSetCounts } from './muscleSets'
+import { resolveMuscleTargets, targetStatus } from './muscleTargets'
+
+describe('secondary muscle credit', () => {
+  const bench = { primaryMuscle: 'chest' as const, secondaryMuscles: ['triceps' as const, 'front_delts' as const] }
+  const set = { weightKg: 100, reps: 5, type: 'working' as const, done: true }
+
+  it('follows the global setting unless the exercise overrides it', () => {
+    expect(countedSecondaryMuscles(bench, true)).toEqual(['triceps', 'front_delts'])
+    expect(countedSecondaryMuscles(bench, false)).toEqual([])
+    expect(countedSecondaryMuscles({ ...bench, countedSecondary: ['triceps'] }, false)).toEqual(['triceps'])
+    expect(countedSecondaryMuscles({ ...bench, countedSecondary: [] }, true)).toEqual([])
+  })
+
+  it('ignores override muscles the exercise no longer lists', () => {
+    expect(countedSecondaryMuscles({ ...bench, countedSecondary: ['triceps', 'biceps'] }, true)).toEqual(['triceps'])
+  })
+
+  it('applies to weekly set counts', () => {
+    const deadlift = { primaryMuscle: 'lower_back' as const, secondaryMuscles: ['glutes' as const, 'hamstrings' as const], countedSecondary: [] }
+    const items = [
+      { set, exercise: { ...bench, countedSecondary: ['triceps' as const] } },
+      { set, exercise: deadlift },
+    ]
+    expect(muscleSetCounts(items, true)).toEqual({ chest: 1, triceps: 0.5, lower_back: 1 })
+  })
+})
+
+describe('muscle targets', () => {
+  it('uses per-muscle overrides, the default range otherwise, and can switch muscles off', () => {
+    const t = resolveMuscleTargets({ min: 10, max: 20 }, { chest: { min: 12, max: 18 }, forearms: 'off' })
+    expect(t.chest).toEqual({ min: 12, max: 18 })
+    expect(t.quads).toEqual({ min: 10, max: 20 })
+    expect(t.forearms).toBeNull()
+  })
+
+  it('classifies progress against a target', () => {
+    expect(targetStatus(5, { min: 10, max: 20 })).toBe('under')
+    expect(targetStatus(12, { min: 10, max: 20 })).toBe('in')
+    expect(targetStatus(22, { min: 10, max: 20 })).toBe('over')
+    expect(targetStatus(0, { min: 10, max: 20 })).toBe('none')
+    expect(targetStatus(3, null)).toBe('off')
+  })
+})

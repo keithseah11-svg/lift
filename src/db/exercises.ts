@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './schema'
 import { newId } from '../lib/id'
 import type { Exercise } from './types'
+import type { Muscle } from '../domain/muscles'
 
 export async function createExercise(data: Omit<Exercise, 'id' | 'custom'>): Promise<Exercise> {
   const exercise: Exercise = { ...data, id: newId(), custom: true }
@@ -15,4 +16,9 @@ export function useExerciseMap(): Map<string, Exercise> | undefined {
     const all = await db.exercises.toArray()
     return new Map(all.map((e) => [e.id, e]))
   }, [])
+}
+
+/** Which secondary muscles earn credit for this exercise; null = follow the global setting. */
+export async function setCountedSecondary(exerciseId: string, muscles: Muscle[] | null): Promise<void> {
+  await db.exercises.update(exerciseId, { countedSecondary: muscles })
 }

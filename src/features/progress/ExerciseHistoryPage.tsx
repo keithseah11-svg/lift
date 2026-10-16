@@ -10,6 +10,8 @@ import { totalVolume } from '../../domain/volume'
 import { formatKg, formatNumber, formatVolume } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
 import { LineChart } from '../../components/LineChart'
+import { ExerciseCreditRow } from '../settings/MuscleTargetsPage'
+import { useSettings } from '../../db/settings'
 
 type Metric = 'e1rm' | 'top' | 'volume'
 
@@ -22,6 +24,7 @@ const METRICS: { key: Metric; label: string; help: string }[] = [
 export function ExerciseHistoryPage() {
   const { id = '' } = useParams()
   const [metric, setMetric] = useState<Metric>('e1rm')
+  const settings = useSettings()
   const exercise = useLiveQuery(async () => (await db.exercises.get(id)) ?? null, [id])
   const sessions = useLiveQuery(() => exerciseSessions(id), [id])
 
@@ -59,6 +62,13 @@ export function ExerciseHistoryPage() {
           {MUSCLE_LABELS[exercise.primaryMuscle]}
           {exercise.secondaryMuscles.length > 0 && ` · ${exercise.secondaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}
         </p>
+
+        <section className="card py-1">
+          <ul>
+            <ExerciseCreditRow exercise={exercise} countSecondary={settings.countSecondary} />
+          </ul>
+          <p className="pb-2 text-xs text-muted">Tap a secondary muscle to include or exclude it from its weekly target.</p>
+        </section>
 
         <div className="grid grid-cols-3 gap-2">
           <RecordTile label="Est. 1RM" value={records.bestE1rm ? formatKg(Math.round(records.bestE1rm.value * 10) / 10) : '—'} sub={records.bestE1rm && `${formatNumber(records.bestE1rm.weightKg)} × ${records.bestE1rm.reps}`} />

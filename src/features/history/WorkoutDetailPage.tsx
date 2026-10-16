@@ -11,6 +11,7 @@ import { formatDuration, formatNumber, formatVolume } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
 import { Stat } from '../../components/Stat'
 import { MuscleSetList } from '../../components/MuscleSetList'
+import { useSettings } from '../../db/settings'
 
 const TYPE_TAG = { warmup: 'W', working: '', drop: 'D', failure: 'F' } as const
 
@@ -19,6 +20,7 @@ export function WorkoutDetailPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const exerciseMap = useExerciseMap()
+  const settings = useSettings()
 
   const loaded = useLiveQuery(async () => {
     const w = await db.workouts.get(id)
@@ -35,7 +37,7 @@ export function WorkoutDetailPage() {
   }
   if (!loaded || !exerciseMap) return null
 
-  const summary = summarize(loaded, exerciseMap)
+  const summary = summarize(loaded, exerciseMap, settings.countSecondary)
   const { workout } = loaded
   const justFinished = params.get('finished') === '1'
 

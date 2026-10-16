@@ -36,7 +36,7 @@ export function TrainPage() {
           </Link>
         ) : (
           <button className="btn-primary w-full py-3.5 text-lg" onClick={() => start(null)}>
-            Start empty workout
+            Start new workout
           </button>
         )}
 

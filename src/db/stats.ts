@@ -22,7 +22,11 @@ export interface LoadedWorkout {
   sets: WorkoutSet[]
 }
 
-export function summarize(loaded: LoadedWorkout, exercises: Map<string, Exercise>): WorkoutSummary {
+export function summarize(
+  loaded: LoadedWorkout,
+  exercises: Map<string, Exercise>,
+  countSecondary = true,
+): WorkoutSummary {
   const weById = new Map(loaded.exercises.map((we) => [we.id, we]))
   const items = loaded.sets.flatMap((set) => {
     const we = weById.get(set.workoutExerciseId)
@@ -35,7 +39,7 @@ export function summarize(loaded: LoadedWorkout, exercises: Map<string, Exercise
     setCount: loaded.sets.filter((s) => s.done && s.type !== 'warmup').length,
     exerciseCount: loaded.exercises.length,
     musclesHit: musclesHit(items),
-    muscleSets: muscleSetCounts(items),
+    muscleSets: muscleSetCounts(items, countSecondary),
     counts: loaded.sets.some((s) => s.done),
   }
 }

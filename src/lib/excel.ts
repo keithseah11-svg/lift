@@ -21,7 +21,7 @@ import { sumMacros } from '../domain/macros'
 import { WEEKDAY_LABELS } from '../domain/week'
 import { MEASUREMENT_SITES, MEASUREMENT_SITE_IDS } from '../domain/measurements'
 
-type Kind = 'string' | 'number' | 'nullableNumber' | 'nullableString' | 'bool' | 'date' | 'nullableDate' | 'list'
+type Kind = 'string' | 'number' | 'nullableNumber' | 'nullableString' | 'bool' | 'date' | 'nullableDate' | 'list' | 'optionalList'
 
 interface Column<T> {
   header: string
@@ -29,6 +29,8 @@ interface Column<T> {
   field?: keyof T & string
   kind?: Kind
   display?: (row: T, ctx: ExportContext) => unknown
+  /** Added in a later version: older backups without this column still import. */
+  optional?: boolean
 }
 
 interface ExportContext {
@@ -171,6 +173,7 @@ const SPECS = [
       incrementKg: z.number(),
       defaultRestSec: z.number(),
       custom: z.boolean(),
+      countedSecondary: z.array(muscle).nullish(),
     }),
     columns: [
       { header: 'ID', field: 'id', kind: 'string', width: 22 },
@@ -181,6 +184,8 @@ const SPECS = [
       { header: 'Increment (kg)', field: 'incrementKg', kind: 'number' },
       { header: 'Rest (s)', field: 'defaultRestSec', kind: 'number' },
       { header: 'Custom', field: 'custom', kind: 'bool' },
+      // Blank = follow the global setting; "none" = no secondary credit.
+      { header: 'Counted secondary', field: 'countedSecondary', kind: 'optionalList', width: 28, optional: true },
     ],
   },
   {
@@ -329,6 +334,10 @@ const settingsSchema = z.object({
   weeklySetMax: z.number(),
   macroTarget: z.object({ proteinG: z.number(), carbsG: z.number(), fatG: z.number(), kcal: z.number() }),
   lastBackupAt: nullableNum,
+  muscleTargets: z
+    .partialRecord(z.enum(MUSCLES), z.union([z.literal('off'), z.object({ min: z.number(), max: z.number() })]))
+    .default({}),
+  countSecondary: z.boolean().default(true),
 })
 
 /** Excel has no time zones; shift so the sheet shows local wall-clock time. */
@@ -355,6 +364,8 @@ function toCell(kind: Kind | undefined, value: unknown): unknown {
       return toExcelDate(value as number)
     case 'list':
       return (value as string[]).join(', ')
+    case 'optionalList':
+      return (value as string[]).length ? (value as string[]).join(', ') : 'none'
     case 'bool':
       return value ? 'yes' : 'no'
     default:
@@ -391,6 +402,13 @@ function fromCell(kind: Kind, raw: unknown): unknown {
       if (blank) return kind === 'date' ? NaN : null
       if (raw instanceof Date) return fromExcelDate(raw)
       return typeof raw === 'number' ? raw : Date.parse(String(raw))
+    case 'optionalList':
+      if (blank) return undefined
+      if (String(raw).trim().toLowerCase() === 'none') return []
+      return String(raw)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     case 'list':
       return blank
         ? []
@@ -546,7 +564,7 @@ export async function parseBackupWorkbook(data: ArrayBuffer): Promise<ParsedBack
 
     const fields = spec.columns.filter((c) => c.field)
     for (const c of fields) {
-      if (!headerIndex.has(c.header)) {
+      if (!headerIndex.has(c.header) && !c.optional) {
         throw new BackupImportError(`Sheet "${spec.name}" is missing the "${c.header}" column.`)
       }
     }
@@ -557,7 +575,8 @@ export async function parseBackupWorkbook(data: ArrayBuffer): Promise<ParsedBack
       if (!row.hasValues) continue
       const obj: Record<string, unknown> = {}
       for (const c of fields) {
-        obj[c.field!] = fromCell(c.kind!, plainCellValue(row.getCell(headerIndex.get(c.header)!).value))
+        const col = headerIndex.get(c.header)
+        obj[c.field!] = col == null ? undefined : fromCell(c.kind!, plainCellValue(row.getCell(col).value))
       }
       const parsed = spec.schema.safeParse(obj)
       if (!parsed.success) {

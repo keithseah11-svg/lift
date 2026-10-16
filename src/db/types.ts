@@ -1,6 +1,7 @@
 import type { Equipment, Muscle } from '../domain/muscles'
 import type { MeasurementSite } from '../domain/measurements'
 import type { Pose } from '../domain/photos'
+import type { MuscleTargetOverrides } from '../domain/muscleTargets'
 
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure'
 
@@ -14,6 +15,11 @@ export interface Exercise {
   incrementKg: number
   defaultRestSec: number
   custom: boolean
+  /**
+   * Which secondary muscles earn ½-set credit for this exercise.
+   * Undefined/null = follow the global setting.
+   */
+  countedSecondary?: Muscle[] | null
 }
 
 export interface Routine {
@@ -141,6 +147,10 @@ export interface Settings {
   weeklySetMax: number
   macroTarget: MacroTarget
   lastBackupAt: number | null
+  /** Per-muscle weekly set targets; muscles not listed use weeklySetMin/Max. */
+  muscleTargets: MuscleTargetOverrides
+  /** Whether secondary muscles earn ½-set credit (exercises can override). */
+  countSecondary: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -149,4 +159,6 @@ export const DEFAULT_SETTINGS: Settings = {
   weeklySetMax: 20,
   macroTarget: { proteinG: 160, carbsG: 250, fatG: 70, kcal: 2270 },
   lastBackupAt: null,
+  muscleTargets: {},
+  countSecondary: true,
 }

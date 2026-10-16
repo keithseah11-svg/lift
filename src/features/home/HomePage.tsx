@@ -13,6 +13,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { ProgressBar } from '../../components/ProgressBar'
 import { MuscleSetList } from '../../components/MuscleSetList'
 import { BodyHeatmap } from '../../components/BodyHeatmap'
+import { resolveMuscleTargets } from '../../domain/muscleTargets'
 import { loadAllRecords, sessionTimes } from '../../db/stats'
 import { weekStreak } from '../../domain/streak'
 import { weeklyRate, withSevenDayAverage } from '../../domain/bodyweight'
@@ -25,7 +26,8 @@ export function HomePage() {
   const navigate = useNavigate()
   const settings = useSettings()
   const exerciseMap = useExerciseMap()
-  const week = useWeekStats(exerciseMap)
+  const week = useWeekStats(exerciseMap, settings.countSecondary)
+  const targets = resolveMuscleTargets({ min: settings.weeklySetMin, max: settings.weeklySetMax }, settings.muscleTargets)
   const today = new Date()
   const todayKey = dayKey(today)
 
@@ -112,7 +114,7 @@ export function HomePage() {
               <div className="text-lg font-bold">Rest day</div>
               {!active && (
                 <button className="btn-secondary" onClick={() => start(null)}>
-                  Start empty workout
+                  Start new workout
                 </button>
               )}
             </div>
@@ -150,16 +152,18 @@ export function HomePage() {
         <section className="card">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="font-bold">Muscles this week</h2>
-            <span className="text-xs text-muted">
-              target {settings.weeklySetMin}–{settings.weeklySetMax} sets
-            </span>
+            <Link to="/settings/muscles" className="text-xs text-accent">
+              Targets ›
+            </Link>
           </div>
-          <BodyHeatmap counts={week?.muscleSets ?? {}} target={{ min: settings.weeklySetMin, max: settings.weeklySetMax }} />
+          <BodyHeatmap counts={week?.muscleSets ?? {}} targets={targets} />
           <div className="my-4 border-t border-line" />
-          <MuscleSetList counts={week?.muscleSets ?? {}} target={{ min: settings.weeklySetMin, max: settings.weeklySetMax }} showAll />
+          <MuscleSetList counts={week?.muscleSets ?? {}} targets={targets} showAll />
           <p className="mt-3 text-xs text-muted">
             <span className="text-warn">■</span> under · <span className="text-good">■</span> in range ·{' '}
-            <span className="text-bad">■</span> over. Secondary muscles count as ½ set.
+            <span className="text-bad">■</span> over. The faint band on each bar is that muscle's target.{' '}
+            {settings.countSecondary ? 'Secondary muscles count as ½ set' : 'Only primary muscles count'} (exercises can
+            override).
           </p>
         </section>
 

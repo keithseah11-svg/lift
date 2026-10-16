@@ -52,7 +52,14 @@ describe('excel backup', () => {
     await setMeasurement('2026-10-01', 'body_fat', 15.2)
     await setWeighIn('2026-10-09', 80.15)
     await addMealPreset('Shake', { proteinG: 30, carbsG: 5, fatG: 2, kcal: 158 })
-    await updateSettings({ weeklySessionTarget: 5, lastBackupAt: 1_760_000_000_000 })
+    await updateSettings({
+      weeklySessionTarget: 5,
+      lastBackupAt: 1_760_000_000_000,
+      muscleTargets: { chest: { min: 12, max: 18 }, forearms: 'off' },
+      countSecondary: false,
+    })
+    await db.exercises.update('bench-press', { countedSecondary: ['triceps'] })
+    await db.exercises.update('deadlift', { countedSecondary: [] })
     await db.exercises.add({
       id: 'custom-1',
       name: 'Landmine Press',
@@ -90,6 +97,18 @@ describe('excel backup', () => {
     const parsed = await parseBackupWorkbook(older)
     expect(parsed.tables.bodyweight).toEqual([])
     expect(parsed.tables.measurements).toEqual([])
+  })
+
+  it('imports backups made before per-exercise secondary choices existed', async () => {
+    await db.exercises.update('bench-press', { countedSecondary: ['triceps'] })
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(await buildBackupWorkbook())
+    const ws = wb.getWorksheet('Exercises')!
+    const col = ws.getRow(1).values as unknown[]
+    ws.spliceColumns(col.indexOf('Counted secondary'), 1)
+    const parsed = await parseBackupWorkbook((await wb.xlsx.writeBuffer()) as ArrayBuffer)
+    const bench = (parsed.tables.exercises as { id: string; countedSecondary?: unknown }[]).find((e) => e.id === 'bench-press')
+    expect(bench?.countedSecondary).toBeUndefined()
   })
 
   it('rejects files that are not Lift backups', async () => {

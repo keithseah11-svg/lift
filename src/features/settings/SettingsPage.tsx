@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { updateSettings, useSettings } from '../../db/settings'
 import { saveFile, XLSX_MIME } from '../../lib/share'
+import { Link } from 'react-router'
 import { PageHeader } from '../../components/PageHeader'
 import { NumberField } from '../../components/NumberField'
 import { PhotoBackup } from './PhotoBackup'
@@ -71,11 +72,11 @@ export function SettingsPage() {
             />
           </label>
           <label className="flex items-center justify-between gap-3">
-            <span>Min sets per muscle</span>
+            <span>Default min sets per muscle</span>
             <NumberField className={numberClass} value={settings.weeklySetMin} onChange={(v) => v != null && updateSettings({ weeklySetMin: v })} />
           </label>
           <label className="flex items-center justify-between gap-3">
-            <span>Max sets per muscle</span>
+            <span>Default max sets per muscle</span>
             <NumberField
               className={numberClass}
               value={settings.weeklySetMax}
@@ -84,8 +85,15 @@ export function SettingsPage() {
             />
           </label>
           <p className="text-xs text-muted">
-            10–20 hard sets per muscle per week suits most people; returns diminish above that.
+            10–20 hard sets per muscle per week suits most people; returns diminish above that. Muscles without their own
+            target use this default.
           </p>
+          <Link to="/settings/muscles" className="btn-secondary w-full justify-between">
+            <span>Muscle targets & secondary muscles</span>
+            <span className="text-sm font-normal text-muted">
+              {Object.keys(settings.muscleTargets).length > 0 ? `${Object.keys(settings.muscleTargets).length} custom ›` : '›'}
+            </span>
+          </Link>
         </section>
 
         <section className="card space-y-3">
