@@ -5,6 +5,7 @@ import { buyItem, equipItem, updateLook, useGame, type GameState } from '../../d
 import { useSettings } from '../../db/settings'
 import {
   BODY_TYPES,
+  EYE_COLORS,
   HAIR_COLORS,
   HAIR_STYLES,
   ITEMS,
@@ -32,7 +33,7 @@ const TABS: { key: Tab; label: string }[] = [
 ]
 
 /** Slots you can leave empty (you always keep bottoms on). */
-const OPTIONAL_SLOTS: Slot[] = ['top', 'shoes', 'head', 'face', 'neck', 'waist', 'wrists']
+const OPTIONAL_SLOTS: Slot[] = ['top', 'shoes', 'head', 'face', 'neck', 'waist', 'wrists', 'pet']
 
 const RARITY_COLOR: Record<Rarity, string> = {
   starter: 'text-muted',
@@ -344,6 +345,20 @@ function Look({ look }: { look: AvatarLook }) {
               className={`size-10 rounded-full ${look.hairColor === c ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
               style={{ background: c }}
               onClick={() => updateLook({ hairColor: c })}
+            />
+          ))}
+        </div>
+      </section>
+      <section>
+        <h3 className="label">Eye colour</h3>
+        <div className="flex flex-wrap gap-2">
+          {EYE_COLORS.map((c) => (
+            <button
+              key={c}
+              aria-label={`Eye colour ${c}`}
+              className={`size-10 rounded-full ${look.eyeColor === c ? 'ring-2 ring-accent ring-offset-2 ring-offset-bg' : ''}`}
+              style={{ background: c }}
+              onClick={() => updateLook({ eyeColor: c })}
             />
           ))}
         </div>

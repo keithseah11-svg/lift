@@ -28,6 +28,8 @@ export type HairStyle = (typeof HAIR_STYLES)[number]['id']
 
 export const HAIR_COLORS = ['#1f1a17', '#5a3a22', '#a4462b', '#d8b25c', '#9a9a9a', '#4f8cff', '#e47aa8'] as const
 
+export const EYE_COLORS = ['#5a3a22', '#2f6fd1', '#2e8b57', '#7b4fd6', '#c0392b', '#1f1a17'] as const
+
 export const SLOTS = [
   { id: 'top', label: 'Tops' },
   { id: 'bottom', label: 'Bottoms' },
@@ -37,6 +39,7 @@ export const SLOTS = [
   { id: 'neck', label: 'Neck' },
   { id: 'waist', label: 'Belts' },
   { id: 'wrists', label: 'Wrists' },
+  { id: 'pet', label: 'Pets' },
   { id: 'background', label: 'Backgrounds' },
 ] as const
 export type Slot = (typeof SLOTS)[number]['id']
@@ -62,6 +65,7 @@ export type ItemStyle =
   | 'towel' | 'chain' | 'platechain'
   | 'belt'
   | 'sweatbands' | 'wraps'
+  | 'pet-potato' | 'pet-chick' | 'pet-cat' | 'pet-dog' | 'pet-bunny' | 'pet-frog' | 'pet-penguin' | 'pet-panda' | 'pet-fox' | 'pet-dragon'
   | 'bg-plain' | 'bg-gym' | 'bg-beach' | 'bg-neon' | 'bg-podium' | 'bg-iron'
 
 export interface ShopItem {
@@ -161,6 +165,19 @@ export const ITEMS: ShopItem[] = [
   item('wraps-black', 'Wrist Wraps', 'wrists', 'wraps', '#22262f', '#d63b3b', 'rare', 10),
   item('wraps-bench', 'Bench Club Wraps', 'wrists', 'wraps', '#f2b13c', '#1b1e25', 'milestone', 'bench-100'),
 
+  // Pets
+  item('pet-spud', 'Spud the Potato', 'pet', 'pet-potato', '#b9864f', '#8a5f33', 'common', 5),
+  item('pet-chick', 'Chick', 'pet', 'pet-chick', '#ffd84a', '#f28c28', 'common', 8),
+  item('pet-cat', 'Cat', 'pet', 'pet-cat', '#f2a65a', '#ff8fa3', 'rare', 20),
+  item('pet-cat-black', 'Black Cat', 'pet', 'pet-cat', '#2a2730', '#ff8fa3', 'rare', 22),
+  item('pet-dog', 'Puppy', 'pet', 'pet-dog', '#e8d2b0', '#8a5f33', 'rare', 20),
+  item('pet-bunny', 'Bunny', 'pet', 'pet-bunny', '#f4f1ec', '#ff8fa3', 'rare', 25),
+  item('pet-frog', 'Frog', 'pet', 'pet-frog', '#5cc35c', '#c8f0a0', 'rare', 18),
+  item('pet-penguin', 'Penguin', 'pet', 'pet-penguin', '#2a2f3a', '#f28c28', 'epic', 45),
+  item('pet-panda', 'Panda', 'pet', 'pet-panda', '#f4f1ec', '#22262f', 'epic', 50),
+  item('pet-fox', 'Fox', 'pet', 'pet-fox', '#e2741c', '#f4f1ec', 'epic', 45),
+  item('pet-dragon', 'Baby Dragon', 'pet', 'pet-dragon', '#7b4fd6', '#f2c335', 'legendary', 120),
+
   // Backgrounds
   item('bg-plain', 'Plain', 'background', 'bg-plain', '#f4efe6', '#e9e1d2', 'starter'),
   item('bg-gym', 'Gym Floor', 'background', 'bg-gym', '#262b36', '#4f8cff', 'rare', 15),
@@ -178,6 +195,7 @@ export interface AvatarLook {
   skinTone: string
   hairStyle: HairStyle
   hairColor: string
+  eyeColor: string
   /** item id per slot; null = nothing in that slot */
   equipped: Partial<Record<Slot, string | null>>
 }
@@ -187,5 +205,6 @@ export const DEFAULT_LOOK: AvatarLook = {
   skinTone: SKIN_TONES[1],
   hairStyle: 'short',
   hairColor: HAIR_COLORS[1],
+  eyeColor: EYE_COLORS[0],
   equipped: { top: 'tee-grey', bottom: 'shorts-black', shoes: 'sneakers-white', background: 'bg-plain' },
 }

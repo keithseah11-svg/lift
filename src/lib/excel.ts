@@ -380,6 +380,7 @@ const settingsSchema = z.object({
       skinTone: z.string(),
       hairStyle: z.enum(HAIR_STYLES.map((h) => h.id) as [HairStyle, ...HairStyle[]]),
       hairColor: z.string(),
+      eyeColor: z.string().default(DEFAULT_LOOK.eyeColor),
       equipped: z.record(z.string(), z.string().nullable()),
     })
     .default(DEFAULT_LOOK),

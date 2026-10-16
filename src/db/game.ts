@@ -5,7 +5,7 @@ import { loadDetails } from './stats'
 import { totalVolume } from '../domain/volume'
 import { coinLedger, type CoinLedger } from '../domain/game/economy'
 import { ACHIEVEMENTS, unlockedAchievements, type AchievementStats } from '../domain/game/achievements'
-import { ITEMS, ITEMS_BY_ID, STARTER_ITEM_IDS, type AvatarLook, type Slot } from '../domain/game/catalog'
+import { DEFAULT_LOOK, ITEMS, ITEMS_BY_ID, STARTER_ITEM_IDS, type AvatarLook, type Slot } from '../domain/game/catalog'
 
 export interface GameState {
   ledger: CoinLedger
@@ -57,7 +57,7 @@ export async function loadGameState(excludeWorkoutId?: string): Promise<GameStat
   const equipped = Object.fromEntries(
     Object.entries(settings.avatar.equipped).map(([slot, id]) => [slot, id && owned.has(id) ? id : null]),
   ) as AvatarLook['equipped']
-  return { ledger, stats, unlocked, owned, look: { ...settings.avatar, equipped } }
+  return { ledger, stats, unlocked, owned, look: { ...DEFAULT_LOOK, ...settings.avatar, equipped } }
 }
 
 export function useGame(): GameState | undefined {

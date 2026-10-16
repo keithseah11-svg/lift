@@ -94,6 +94,12 @@ input[type='number']::-webkit-outer-spin-button {
 .av-anim .av-eyes-closed {
   animation: av-blink-closed 4.2s steps(1, end) infinite;
 }
+.av-anim .av-pet {
+  animation: av-pet-hop 1.6s steps(1, end) infinite;
+}
+.av-anim.av-cheer .av-pet {
+  animation: av-hop 0.6s steps(1, end) 3 0.15s;
+}
 .av-anim.av-cheer .av-char {
   animation: av-hop 0.6s steps(1, end) 3;
 }
@@ -121,6 +127,13 @@ input[type='number']::-webkit-outer-spin-button {
   40% { transform: translateY(-4px); }
   60% { transform: translateY(-2px); }
   80% { transform: translateY(0); }
+}
+@keyframes av-pet-hop {
+  0% { transform: translateY(0); }
+  55% { transform: translateY(-1px); }
+  65% { transform: translateY(-2px); }
+  75% { transform: translateY(-1px); }
+  85% { transform: translateY(0); }
 }
 @keyframes av-flap {
   0% { transform: translateY(0); }
