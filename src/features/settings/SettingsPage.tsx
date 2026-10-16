@@ -6,6 +6,7 @@ import { Link } from 'react-router'
 import { PageHeader } from '../../components/PageHeader'
 import { NumberField } from '../../components/NumberField'
 import { PhotoBackup } from './PhotoBackup'
+import { AppVersion } from './AppVersion'
 
 type ExportState = { status: 'idle' } | { status: 'building' } | { status: 'ready'; data: ArrayBuffer; fileName: string } | { status: 'error'; message: string }
 
@@ -140,6 +141,8 @@ export function SettingsPage() {
             {persisted === null && 'Storage status unavailable.'}
           </p>
         </section>
+
+        <AppVersion />
       </div>
     </div>
   )
