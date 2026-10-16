@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { MUSCLE_LABELS, type Muscle } from '../domain/muscles'
+import { muscleLabel, type Muscle } from '../domain/muscles'
 import { formatNumber } from '../lib/format'
 import { targetStatus, type ResolvedTargets, type TargetStatus } from '../domain/muscleTargets'
 
@@ -81,7 +81,7 @@ export function BodyHeatmap({ counts, targets }: Props) {
             onClick={() => setSelected((s) => (s === m ? null : m))}
             className="cursor-pointer"
             role="button"
-            aria-label={`${MUSCLE_LABELS[m]}: ${formatNumber(counts[m] ?? 0)} sets`}
+            aria-label={`${muscleLabel(m)}: ${formatNumber(counts[m] ?? 0)} sets`}
           >
             {draw(shapeProps(m))}
           </g>
@@ -100,7 +100,7 @@ export function BodyHeatmap({ counts, targets }: Props) {
       <p className="mt-2 h-5 text-center text-sm">
         {selected ? (
           <>
-            <span className="font-semibold">{MUSCLE_LABELS[selected]}</span>{' '}
+            <span className="font-semibold">{muscleLabel(selected)}</span>{' '}
             <span className="text-muted">
               {formatNumber(counts[selected] ?? 0)} sets ·{' '}
               {targets[selected] ? `of ${targets[selected].min}–${targets[selected].max} · ` : ''}

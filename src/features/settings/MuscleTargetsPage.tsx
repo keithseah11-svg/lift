@@ -4,7 +4,10 @@ import { db } from '../../db/schema'
 import { updateSettings, useSettings } from '../../db/settings'
 import { setCountedSecondary } from '../../db/exercises'
 import type { Exercise } from '../../db/types'
-import { MUSCLES, MUSCLE_LABELS, type Muscle } from '../../domain/muscles'
+import { isBuiltinMuscle, muscleLabel, type Muscle } from '../../domain/muscles'
+import { useMuscles } from '../../app/MusclesProvider'
+import { Link } from 'react-router'
+import { AddMuscleSheet } from './AddMuscleSheet'
 import { countedSecondaryMuscles } from '../../domain/muscleSets'
 import type { MuscleTarget, MuscleTargetOverrides, SetRange } from '../../domain/muscleTargets'
 import { searchByName } from '../../domain/search'
@@ -14,16 +17,20 @@ import { NumberField } from '../../components/NumberField'
 const numberClass =
   'h-9 w-14 rounded-lg bg-surface-2 text-center font-semibold outline-none focus:ring-1 focus:ring-accent disabled:opacity-30'
 
+/** Sets (or clears, with null) one muscle's own weekly target. */
+export async function setMuscleTarget(current: MuscleTargetOverrides, m: Muscle, value: MuscleTarget | null) {
+  const next: MuscleTargetOverrides = { ...current }
+  if (value == null) delete next[m]
+  else next[m] = value
+  await updateSettings({ muscleTargets: next })
+}
+
 export function MuscleTargetsPage() {
   const settings = useSettings()
+  const { all } = useMuscles()
+  const [adding, setAdding] = useState(false)
   const defaults: SetRange = { min: settings.weeklySetMin, max: settings.weeklySetMax }
-
-  const setOverride = (m: Muscle, value: MuscleTarget | null) => {
-    const next: MuscleTargetOverrides = { ...settings.muscleTargets }
-    if (value == null) delete next[m]
-    else next[m] = value
-    return updateSettings({ muscleTargets: next })
-  }
+  const setOverride = (m: Muscle, value: MuscleTarget | null) => setMuscleTarget(settings.muscleTargets, m, value)
 
   return (
     <div className="pb-6">
@@ -34,8 +41,12 @@ export function MuscleTargetsPage() {
             <h2 className="font-bold">Weekly sets per muscle</h2>
             <p className="text-xs text-muted">
               Default is {defaults.min}–{defaults.max} sets (change it in Settings). Type a number to give a muscle its own
-              range, or switch tracking off for muscles you don’t want to target.
+              range, or switch tracking off for muscles you don’t want to target. Tap a muscle to see and change
+              which exercises work it.
             </p>
+            <button className="btn-primary mt-3 w-full" onClick={() => setAdding(true)}>
+              + Add muscle group
+            </button>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_3.5rem_0.75rem_3.5rem_3rem] items-center gap-x-1.5 px-4 pb-1 text-[11px] font-medium text-muted uppercase">
             <span>Muscle</span>
@@ -45,7 +56,7 @@ export function MuscleTargetsPage() {
             <span className="text-center">Track</span>
           </div>
           <ul className="divide-y divide-line">
-            {MUSCLES.map((m) => (
+            {all.map((m) => (
               <MuscleRow key={m} muscle={m} override={settings.muscleTargets[m]} defaults={defaults} onChange={(v) => setOverride(m, v)} />
             ))}
           </ul>
@@ -53,20 +64,24 @@ export function MuscleTargetsPage() {
 
         <SecondarySection countSecondary={settings.countSecondary} />
       </div>
+      <AddMuscleSheet open={adding} onClose={() => setAdding(false)} />
     </div>
   )
 }
 
-function MuscleRow({
+export function MuscleRow({
   muscle,
   override,
   defaults,
   onChange,
+  linked = true,
 }: {
   muscle: Muscle
   override: MuscleTarget | undefined
   defaults: SetRange
   onChange: (value: MuscleTarget | null) => void
+  /** Show the muscle name as a link to its page. */
+  linked?: boolean
 }) {
   const off = override === 'off'
   const custom = override != null && override !== 'off'
@@ -84,7 +99,14 @@ function MuscleRow({
   return (
     <li className="grid grid-cols-[minmax(0,1fr)_3.5rem_0.75rem_3.5rem_3rem] items-center gap-x-1.5 px-4 py-2">
       <div className="min-w-0">
-        <div className={`truncate text-sm ${off ? 'text-muted' : ''}`}>{MUSCLE_LABELS[muscle]}</div>
+        {linked ? (
+          <Link to={`/settings/muscles/${muscle}`} className={`block truncate text-sm ${off ? 'text-muted' : 'text-accent'}`}>
+            {muscleLabel(muscle)}
+            {!isBuiltinMuscle(muscle) && <span className="ml-1 text-[10px] text-muted uppercase">yours</span>} ›
+          </Link>
+        ) : (
+          <div className="text-sm font-medium">Weekly target</div>
+        )}
         <div className="text-[11px] text-muted">
           {off ? (
             'Not tracked'
@@ -97,16 +119,16 @@ function MuscleRow({
           )}
         </div>
       </div>
-      <NumberField ariaLabel={`${MUSCLE_LABELS[muscle]} minimum sets`} className={numberClass} value={off ? null : range.min} placeholder="–" onChange={setMin} />
+      <NumberField ariaLabel={`${muscleLabel(muscle)} minimum sets`} className={numberClass} value={off ? null : range.min} placeholder="–" onChange={setMin} />
       <span className="text-center text-muted">–</span>
-      <NumberField ariaLabel={`${MUSCLE_LABELS[muscle]} maximum sets`} className={numberClass} value={off ? null : range.max} placeholder="–" onChange={setMax} min={1} />
+      <NumberField ariaLabel={`${muscleLabel(muscle)} maximum sets`} className={numberClass} value={off ? null : range.max} placeholder="–" onChange={setMax} min={1} />
       <label className="flex justify-center">
         <input
           type="checkbox"
           className="size-5 accent-accent"
           checked={!off}
           onChange={(e) => onChange(e.target.checked ? null : 'off')}
-          aria-label={`Track ${MUSCLE_LABELS[muscle]}`}
+          aria-label={`Track ${muscleLabel(muscle)}`}
         />
       </label>
     </li>
@@ -203,7 +225,7 @@ export function ExerciseCreditRow({ exercise, countSecondary }: { exercise: Exer
         )}
       </div>
       <div className="flex flex-wrap gap-1.5">
-        <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">{MUSCLE_LABELS[exercise.primaryMuscle]} · 1</span>
+        <span className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">{muscleLabel(exercise.primaryMuscle)} · 1</span>
         {exercise.secondaryMuscles.map((m) => {
           const on = counted.includes(m)
           return (
@@ -213,7 +235,7 @@ export function ExerciseCreditRow({ exercise, countSecondary }: { exercise: Exer
               onClick={() => toggle(m)}
               aria-pressed={on}
             >
-              {MUSCLE_LABELS[m]} · {on ? '½' : '0'}
+              {muscleLabel(m)} · {on ? '½' : '0'}
             </button>
           )
         })}

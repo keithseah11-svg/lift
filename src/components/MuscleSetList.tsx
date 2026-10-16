@@ -1,4 +1,5 @@
-import { MUSCLES, MUSCLE_LABELS, type Muscle } from '../domain/muscles'
+import { muscleLabel, type Muscle } from '../domain/muscles'
+import { useMuscles } from '../app/MusclesProvider'
 import { targetStatus, type ResolvedTargets } from '../domain/muscleTargets'
 import { formatNumber } from '../lib/format'
 
@@ -13,9 +14,10 @@ const TONE = { off: 'bg-muted/40', none: 'bg-line', under: 'bg-warn', in: 'bg-go
 
 export function MuscleSetList({ counts, targets, showAll }: Props) {
   // Untracked muscles only show if they actually got sets.
-  const rows = MUSCLES.filter((m) => (counts[m] ?? 0) > 0 || (showAll && (!targets || targets[m])))
+  const muscles = useMuscles().all
+  const rows = muscles.filter((m) => (counts[m] ?? 0) > 0 || (showAll && (!targets || targets[m])))
   if (rows.length === 0) return <p className="text-sm text-muted">No working sets yet.</p>
-  const maxTarget = targets ? Math.max(...MUSCLES.map((m) => targets[m]?.max ?? 0), 1) : 0
+  const maxTarget = targets ? Math.max(...muscles.map((m) => targets[m]?.max ?? 0), 1) : 0
   const scale = Math.max(maxTarget * 1.25, ...rows.map((m) => counts[m] ?? 0), 1)
 
   return (
@@ -26,7 +28,7 @@ export function MuscleSetList({ counts, targets, showAll }: Props) {
         const tone = targets ? TONE[targetStatus(n, target)] : 'bg-accent'
         return (
           <li key={m} className="grid grid-cols-[6.5rem_1fr_3.5rem] items-center gap-2 text-sm">
-            <span className="truncate text-muted">{MUSCLE_LABELS[m]}</span>
+            <span className="truncate text-muted">{muscleLabel(m)}</span>
             <div className="relative h-2.5 rounded-full bg-surface-2">
               {target && (
                 <div

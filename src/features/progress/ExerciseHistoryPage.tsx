@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { format } from 'date-fns'
 import { db } from '../../db/schema'
 import { exerciseSessions } from '../../db/workouts'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { computeRecords, sessionBestE1rm } from '../../domain/records'
 import { totalVolume } from '../../domain/volume'
 import { formatKg, formatNumber, formatVolume } from '../../lib/format'
@@ -59,8 +59,8 @@ export function ExerciseHistoryPage() {
       <PageHeader title={exercise.name} back />
       <div className="space-y-3 px-4">
         <p className="text-sm text-muted">
-          {MUSCLE_LABELS[exercise.primaryMuscle]}
-          {exercise.secondaryMuscles.length > 0 && ` · ${exercise.secondaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}
+          {muscleLabel(exercise.primaryMuscle)}
+          {exercise.secondaryMuscles.length > 0 && ` · ${exercise.secondaryMuscles.map((m) => muscleLabel(m)).join(', ')}`}
         </p>
 
         <section className="card py-1">

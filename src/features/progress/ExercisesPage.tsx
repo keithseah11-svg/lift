@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { format } from 'date-fns'
 import { useExerciseMap } from '../../db/exercises'
 import { loadAllRecords } from '../../db/stats'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { formatKg } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
 import { searchByName } from '../../domain/search'
@@ -54,7 +54,7 @@ export function ExercisesPage() {
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{exercise.name}</div>
                   <div className="text-xs text-muted">
-                    {MUSCLE_LABELS[exercise.primaryMuscle]} · {sessions} session{sessions === 1 ? '' : 's'} · {format(lastAt, 'd MMM')}
+                    {muscleLabel(exercise.primaryMuscle)} · {sessions} session{sessions === 1 ? '' : 's'} · {format(lastAt, 'd MMM')}
                   </div>
                 </div>
                 <div className="text-right">

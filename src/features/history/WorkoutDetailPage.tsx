@@ -5,7 +5,7 @@ import { db } from '../../db/schema'
 import { useExerciseMap } from '../../db/exercises'
 import { loadDetails, summarize } from '../../db/stats'
 import { deleteWorkout, saveWorkoutAsRoutine } from '../../db/workouts'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { setVolume } from '../../domain/volume'
 import { formatDuration, formatNumber, formatVolume } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
@@ -89,7 +89,7 @@ export function WorkoutDetailPage() {
                 <h3 className="font-semibold text-accent">{ex?.name ?? 'Unknown exercise'}</h3>
                 <span className="text-xs text-muted">{formatVolume(exVolume)}</span>
               </div>
-              <p className="mb-2 text-xs text-muted">{ex && MUSCLE_LABELS[ex.primaryMuscle]}</p>
+              <p className="mb-2 text-xs text-muted">{ex && muscleLabel(ex.primaryMuscle)}</p>
               <ul className="space-y-1 text-sm">
                 {sets.map((s) => (
                   <li key={s.id} className="flex gap-3">

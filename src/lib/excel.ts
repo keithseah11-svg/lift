@@ -15,7 +15,7 @@ import {
   type Workout,
   type WorkoutSet,
 } from '../db/types'
-import { EQUIPMENT, MUSCLES, MUSCLE_LABELS } from '../domain/muscles'
+import { EQUIPMENT, allMuscles, isMuscleId, muscleLabel, setCustomMuscles, type Muscle } from '../domain/muscles'
 import { setVolume, totalVolume } from '../domain/volume'
 import { sumMacros } from '../domain/macros'
 import { WEEKDAY_LABELS } from '../domain/week'
@@ -59,11 +59,13 @@ const TABLES = {
   schedule: () => db.schedule,
   macroEntries: () => db.macroEntries,
   mealPresets: () => db.mealPresets,
+  muscles: () => db.muscles,
   bodyweight: () => db.bodyweight,
   measurements: () => db.measurements,
 }
 
-const muscle = z.enum(MUSCLES)
+/** Built-in muscle names or your own (custom-…) ids. */
+const muscle = z.string().refine(isMuscleId, 'not a known muscle') as unknown as z.ZodType<Muscle>
 const nullableNum = z.number().nullable()
 const setType = z.enum(['warmup', 'working', 'drop', 'failure'])
 
@@ -146,7 +148,7 @@ const SPECS = [
         width: 14,
         display: (r, c) => {
           const ex = c.exercises.get(c.workoutExercises.get(r.workoutExerciseId)?.exerciseId ?? '')
-          return ex && MUSCLE_LABELS[ex.primaryMuscle]
+          return ex && muscleLabel(ex.primaryMuscle)
         },
       },
       { header: 'Order', field: 'order', kind: 'number' },
@@ -273,6 +275,21 @@ const SPECS = [
     ],
   },
   {
+    name: 'Custom Muscles',
+    table: 'muscles',
+    optional: true,
+    schema: z.object({
+      id: z.string().regex(/^custom-[a-z0-9-]+$/),
+      name: z.string().min(1),
+      createdAt: z.number(),
+    }),
+    columns: [
+      { header: 'Name', field: 'name', kind: 'string', width: 22 },
+      { header: 'ID', field: 'id', kind: 'string', width: 28 },
+      { header: 'Added', field: 'createdAt', kind: 'date', width: 18 },
+    ],
+  },
+  {
     name: 'Meal Presets',
     table: 'mealPresets',
     schema: z.object({
@@ -335,7 +352,7 @@ const settingsSchema = z.object({
   macroTarget: z.object({ proteinG: z.number(), carbsG: z.number(), fatG: z.number(), kcal: z.number() }),
   lastBackupAt: nullableNum,
   muscleTargets: z
-    .partialRecord(z.enum(MUSCLES), z.union([z.literal('off'), z.object({ min: z.number(), max: z.number() })]))
+    .record(z.string().refine((k): boolean => isMuscleId(k), 'not a known muscle'), z.union([z.literal('off'), z.object({ min: z.number(), max: z.number() })]))
     .default({}),
   countSecondary: z.boolean().default(true),
 })
@@ -425,6 +442,8 @@ export async function buildBackupWorkbook(): Promise<ArrayBuffer> {
   wb.creator = 'Lift'
   wb.created = new Date()
 
+  // Make sure custom muscle names are known for the readable columns.
+  setCustomMuscles(await db.muscles.toArray())
   const [exercises, routines, workouts, workoutExercises, sets, macroEntries, settings] = await Promise.all([
     db.exercises.toArray(),
     db.routines.toArray(),
@@ -526,7 +545,7 @@ function addSummarySheets(
     { header: 'Code', width: 14 },
     { header: 'Muscle', width: 14 },
   ]
-  for (const m of MUSCLES) muscles.addRow([m, MUSCLE_LABELS[m]])
+  for (const m of allMuscles()) muscles.addRow([m, muscleLabel(m)])
   styleHeader(muscles)
 }
 

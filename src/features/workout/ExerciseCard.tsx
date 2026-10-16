@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import type { Exercise, SetType, WorkoutExercise, WorkoutSet } from '../../db/types'
 import { db } from '../../db/schema'
 import { deleteSet, updateSet } from '../../db/workouts'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { matchPrevious } from '../../domain/previous'
 import { restsAfter, type SupersetInfo } from '../../domain/supersets'
 import { SupersetBadge, supersetCardClass } from '../../components/SupersetBadge'
@@ -81,8 +81,8 @@ export function ExerciseCard(props: Props) {
             {exercise.name}
           </Link>
           <p className="text-xs text-muted">
-            {MUSCLE_LABELS[exercise.primaryMuscle]}
-            {exercise.secondaryMuscles.length > 0 && ` · ${exercise.secondaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}
+            {muscleLabel(exercise.primaryMuscle)}
+            {exercise.secondaryMuscles.length > 0 && ` · ${exercise.secondaryMuscles.map((m) => muscleLabel(m)).join(', ')}`}
           </p>
           <p className="mt-0.5 text-xs text-muted">
             {target && <span>{target} · </span>}

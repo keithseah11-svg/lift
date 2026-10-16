@@ -6,7 +6,7 @@ import { useExerciseMap } from '../../db/exercises'
 import { useSettings } from '../../db/settings'
 import { getActiveWorkout, startWorkout } from '../../db/workouts'
 import { dayKey, weekdayIndex } from '../../domain/week'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { remainingMacros, sumMacros } from '../../domain/macros'
 import { formatVolume } from '../../lib/format'
 import { PageHeader } from '../../components/PageHeader'
@@ -93,7 +93,7 @@ export function HomePage() {
               <div className="font-semibold text-good">✓ Trained today</div>
               {trainedToday.map((s) => (
                 <Link key={s.workout.id} to={`/history/${s.workout.id}`} className="block text-sm text-muted">
-                  {s.workout.name} · {formatVolume(s.volume)} · {s.musclesHit.map((m) => MUSCLE_LABELS[m]).join(', ')}
+                  {s.workout.name} · {formatVolume(s.volume)} · {s.musclesHit.map((m) => muscleLabel(m)).join(', ')}
                 </Link>
               ))}
             </div>
@@ -142,7 +142,7 @@ export function HomePage() {
             <div className="flex flex-wrap gap-1.5">
               {hitThisWeek.map((m) => (
                 <span key={m} className="chip-active text-xs">
-                  {MUSCLE_LABELS[m]}
+                  {muscleLabel(m)}
                 </span>
               ))}
             </div>

@@ -15,6 +15,7 @@ import type {
   WorkoutSet,
 } from './types'
 import { SEED_EXERCISES } from './seed/exercises'
+import type { CustomMuscle } from '../domain/muscles'
 
 export interface KeyValue {
   key: string
@@ -35,6 +36,7 @@ export class LiftDB extends Dexie {
   bodyweight!: EntityTable<BodyweightEntry, 'date'>
   measurements!: EntityTable<Measurement, 'id'>
   photos!: EntityTable<ProgressPhoto, 'id'>
+  muscles!: EntityTable<CustomMuscle, 'id'>
 
   constructor(name = 'lift') {
     super(name)
@@ -54,6 +56,8 @@ export class LiftDB extends Dexie {
     this.version(2).stores({ bodyweight: 'date' })
     // v3: body measurements and progress photos.
     this.version(3).stores({ measurements: 'id, date, site', photos: 'id, date, pose' })
+    // v4: muscle groups you add yourself.
+    this.version(4).stores({ muscles: 'id' })
     this.on('populate', (tx) => {
       tx.table('exercises').bulkAdd(SEED_EXERCISES)
     })

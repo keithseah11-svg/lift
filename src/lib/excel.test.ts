@@ -28,6 +28,7 @@ async function snapshot() {
     mealPresets: sortById(await db.mealPresets.toArray()),
     bodyweight: await db.bodyweight.orderBy('date').toArray(),
     measurements: sortById(await db.measurements.toArray()),
+    muscles: await db.muscles.toArray(),
     settings: await getSettings(),
   }
 }
@@ -60,6 +61,9 @@ describe('excel backup', () => {
     })
     await db.exercises.update('bench-press', { countedSecondary: ['triceps'] })
     await db.exercises.update('deadlift', { countedSecondary: [] })
+    await db.muscles.add({ id: 'custom-adductors-ab12', name: 'Adductors', createdAt: 1_760_000_000_000 })
+    await db.exercises.update('squat', { secondaryMuscles: ['glutes', 'lower_back', 'custom-adductors-ab12'] })
+    await updateSettings({ muscleTargets: { chest: { min: 12, max: 18 }, forearms: 'off', 'custom-adductors-ab12': { min: 4, max: 8 } } })
     await db.exercises.add({
       id: 'custom-1',
       name: 'Landmine Press',

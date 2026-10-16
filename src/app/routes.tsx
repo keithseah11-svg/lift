@@ -13,6 +13,7 @@ import { RoutineEditorPage } from '../features/plan/RoutineEditorPage'
 import { FoodPage } from '../features/nutrition/FoodPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { MuscleTargetsPage } from '../features/settings/MuscleTargetsPage'
+import { MuscleDetailPage } from '../features/settings/MuscleDetailPage'
 
 // Hash routing works on GitHub Pages without server-side rewrites.
 export const router = createHashRouter([
@@ -32,6 +33,7 @@ export const router = createHashRouter([
       { path: '/food', element: <FoodPage /> },
       { path: '/settings', element: <SettingsPage /> },
       { path: '/settings/muscles', element: <MuscleTargetsPage /> },
+      { path: '/settings/muscles/:id', element: <MuscleDetailPage /> },
     ],
   },
 ])

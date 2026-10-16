@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { db } from '../../db/schema'
 import { useExerciseMap } from '../../db/exercises'
 import { loadDetails, summarize } from '../../db/stats'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { dayKey, weekStart } from '../../domain/week'
 import { weekStreak } from '../../domain/streak'
 import { useSettings } from '../../db/settings'
@@ -91,7 +91,7 @@ export function WorkoutsPage() {
                     </div>
                     <div className="mt-1 text-sm">
                       {s.counts ? (
-                        s.musclesHit.map((m) => MUSCLE_LABELS[m]).join(', ')
+                        s.musclesHit.map((m) => muscleLabel(m)).join(', ')
                       ) : (
                         <span className="text-warn">Empty, not counted. Open it to delete.</span>
                       )}

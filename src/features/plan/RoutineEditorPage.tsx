@@ -13,7 +13,7 @@ import {
 } from '../../db/routines'
 import { getActiveWorkout, startWorkout } from '../../db/workouts'
 import type { RoutineExercise } from '../../db/types'
-import { MUSCLE_LABELS } from '../../domain/muscles'
+import { muscleLabel } from '../../domain/muscles'
 import { supersetLayout, type SupersetInfo } from '../../domain/supersets'
 import { routineGroups } from '../../db/supersets'
 import { SupersetBadge, supersetCardClass } from '../../components/SupersetBadge'
@@ -80,7 +80,7 @@ export function RoutineEditorPage() {
               key={item.id}
               item={item}
               name={ex?.name ?? 'Unknown exercise'}
-              muscle={ex ? MUSCLE_LABELS[ex.primaryMuscle] : ''}
+              muscle={ex ? muscleLabel(ex.primaryMuscle) : ''}
               isFirst={i === 0}
               isLast={i === items.length - 1}
               superset={layout.get(item.id)}

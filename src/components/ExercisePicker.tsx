@@ -3,7 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/schema'
 import { createExercise } from '../db/exercises'
 import type { Exercise } from '../db/types'
-import { EQUIPMENT, EQUIPMENT_LABELS, MUSCLES, MUSCLE_LABELS, type Equipment, type Muscle } from '../domain/muscles'
+import { EQUIPMENT, EQUIPMENT_LABELS, muscleLabel, type Equipment, type Muscle } from '../domain/muscles'
+import { useMuscles } from '../app/MusclesProvider'
 import { Sheet } from './Sheet'
 import { searchByName } from '../domain/search'
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function ExercisePicker({ open, onClose, onPick }: Props) {
+  const muscles = useMuscles().all
   const [query, setQuery] = useState('')
   const [muscle, setMuscle] = useState<Muscle | null>(null)
   const [creating, setCreating] = useState(false)
@@ -60,9 +62,9 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
               <button className={muscle === null ? 'chip-active' : 'chip'} onClick={() => setMuscle(null)}>
                 All
               </button>
-              {MUSCLES.map((m) => (
+              {muscles.map((m) => (
                 <button key={m} className={muscle === m ? 'chip-active' : 'chip'} onClick={() => setMuscle(m)}>
-                  {MUSCLE_LABELS[m]}
+                  {muscleLabel(m)}
                 </button>
               ))}
             </div>
@@ -73,8 +75,8 @@ export function ExercisePicker({ open, onClose, onPick }: Props) {
                 <button className="w-full py-3 text-left" onClick={() => pick(e)}>
                   <div className="font-medium">{e.name}</div>
                   <div className="text-sm text-muted">
-                    {MUSCLE_LABELS[e.primaryMuscle]}
-                    {e.secondaryMuscles.length > 0 && ` · ${e.secondaryMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}
+                    {muscleLabel(e.primaryMuscle)}
+                    {e.secondaryMuscles.length > 0 && ` · ${e.secondaryMuscles.map((m) => muscleLabel(m)).join(', ')}`}
                   </div>
                 </button>
               </li>
@@ -99,6 +101,7 @@ function CreateExerciseForm({
   onCancel: () => void
   onCreated: (e: Exercise) => void
 }) {
+  const muscles = useMuscles().all
   const [name, setName] = useState(initialName)
   const [primary, setPrimary] = useState<Muscle>('chest')
   const [secondary, setSecondary] = useState<Muscle[]>([])
@@ -138,9 +141,9 @@ function CreateExerciseForm({
       <div>
         <label className="label">Primary muscle</label>
         <select className="field" value={primary} onChange={(e) => setPrimary(e.target.value as Muscle)}>
-          {MUSCLES.map((m) => (
+          {muscles.map((m) => (
             <option key={m} value={m}>
-              {MUSCLE_LABELS[m]}
+              {muscleLabel(m)}
             </option>
           ))}
         </select>
@@ -148,9 +151,9 @@ function CreateExerciseForm({
       <div>
         <label className="label">Secondary muscles (count as ½ set)</label>
         <div className="flex flex-wrap gap-2">
-          {MUSCLES.filter((m) => m !== primary).map((m) => (
+          {muscles.filter((m) => m !== primary).map((m) => (
             <button key={m} className={secondary.includes(m) ? 'chip-active' : 'chip'} onClick={() => toggleSecondary(m)}>
-              {MUSCLE_LABELS[m]}
+              {muscleLabel(m)}
             </button>
           ))}
         </div>

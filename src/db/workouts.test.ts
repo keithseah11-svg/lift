@@ -171,3 +171,37 @@ describe('empty workouts', () => {
     expect(await sessionTimes()).toHaveLength(0)
   })
 })
+
+describe('custom muscle groups', () => {
+  it('creates a muscle once, links exercises, counts its sets, and deletes cleanly', async () => {
+    const { createMuscle, linkExerciseToMuscle, unlinkExerciseFromMuscle, deleteMuscle } = await import('./muscles')
+    const first = await createMuscle('Adductors')
+    expect(first.created).toBe(true)
+    expect((await createMuscle(' adductors ')).id).toBe(first.id) // same name → same muscle
+    expect((await createMuscle('Front Delts')).id).toBe('front_delts') // built-in → existing
+    const adductors = first.id
+
+    await linkExerciseToMuscle('squat', adductors, 'secondary')
+    await linkExerciseToMuscle('hip-abduction', adductors, 'main')
+    expect((await db.exercises.get('squat'))?.secondaryMuscles).toContain(adductors)
+    expect((await db.exercises.get('hip-abduction'))?.primaryMuscle).toBe(adductors)
+
+    // A squat workout now credits ½ set to the new muscle.
+    const id = await startWorkout()
+    await addExerciseToWorkout(id, await exercise('squat'))
+    const [set] = await db.sets.where('workoutId').equals(id).sortBy('order')
+    await updateSet(set.id, { weightKg: 100, reps: 5, done: true })
+    await finishWorkout(id)
+    const [loaded] = await loadDetails([(await db.workouts.get(id))!])
+    const map = new Map((await db.exercises.toArray()).map((e) => [e.id, e]))
+    expect(summarize(loaded, map).muscleSets[adductors]).toBe(0.5)
+
+    // Can't delete while it's an exercise's main muscle; can after reassigning.
+    expect(await deleteMuscle(adductors as `custom-${string}`)).toEqual({ ok: false, mainFor: ['Hip Abduction (Machine)'] })
+    await linkExerciseToMuscle('hip-abduction', 'glutes', 'main')
+    expect(await unlinkExerciseFromMuscle('hip-abduction', adductors)).toBe(true)
+    expect(await deleteMuscle(adductors as `custom-${string}`)).toEqual({ ok: true })
+    expect((await db.exercises.get('squat'))?.secondaryMuscles).not.toContain(adductors)
+    expect(await db.muscles.count()).toBe(0)
+  })
+})
