@@ -2,6 +2,7 @@ import type { Equipment, Muscle } from '../domain/muscles'
 import type { MeasurementSite } from '../domain/measurements'
 import type { Pose } from '../domain/photos'
 import type { MuscleTargetOverrides } from '../domain/muscleTargets'
+import { DEFAULT_LOOK, type AvatarLook } from '../domain/game/catalog'
 
 export type SetType = 'warmup' | 'working' | 'drop' | 'failure'
 
@@ -151,6 +152,15 @@ export interface Settings {
   muscleTargets: MuscleTargetOverrides
   /** Whether secondary muscles earn ½-set credit (exercises can override). */
   countSecondary: boolean
+  /** Coins count workouts finished from this moment (set when the game first starts). */
+  coinsSince: number | null
+  avatar: AvatarLook
+}
+
+export interface Purchase {
+  itemId: string
+  price: number
+  purchasedAt: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -161,4 +171,6 @@ export const DEFAULT_SETTINGS: Settings = {
   lastBackupAt: null,
   muscleTargets: {},
   countSecondary: true,
+  coinsSince: null,
+  avatar: DEFAULT_LOOK,
 }

@@ -12,6 +12,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { Stat } from '../../components/Stat'
 import { MuscleSetList } from '../../components/MuscleSetList'
 import { useSettings } from '../../db/settings'
+import { workoutRewards } from '../../db/game'
 
 const TYPE_TAG = { warmup: 'W', working: '', drop: 'D', failure: 'F' } as const
 
@@ -64,6 +65,7 @@ export function WorkoutDetailPage() {
             <div className="font-bold">Workout complete</div>
           </div>
         )}
+        {justFinished && <RewardsCard workoutId={workout.id} />}
 
         <div className="text-sm text-muted">{format(workout.startedAt, 'EEEE d MMMM yyyy, HH:mm')}</div>
 
@@ -125,5 +127,25 @@ export function WorkoutDetailPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+function RewardsCard({ workoutId }: { workoutId: string }) {
+  const rewards = useLiveQuery(() => workoutRewards(workoutId), [workoutId])
+  if (!rewards || (rewards.coins === 0 && rewards.newAwards.length === 0)) return null
+  return (
+    <Link to={rewards.newAwards.length ? '/avatar?tab=achievements' : '/avatar'} className="card block">
+      {rewards.coins > 0 && (
+        <div className="font-bold">
+          +{rewards.coins} 🪙 coin{rewards.coins === 1 ? '' : 's'} earned
+        </div>
+      )}
+      {rewards.newAwards.map((a) => (
+        <div key={a.id} className="text-sm">
+          🏆 <span className="font-semibold">{a.name}</span> <span className="text-muted">unlocked</span>
+        </div>
+      ))}
+      <div className="mt-1 text-xs text-accent">Visit the shop ›</div>
+    </Link>
   )
 }

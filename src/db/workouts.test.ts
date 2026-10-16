@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { db } from './schema'
-import { addExerciseToWorkout, deleteWorkout, finishWorkout, getActiveWorkout, moveWorkoutExercise, previousPerformance, startWorkout, updateSet } from './workouts'
+import { addExerciseToWorkout, addSet, deleteWorkout, finishWorkout, getActiveWorkout, moveWorkoutExercise, previousPerformance, startWorkout, updateSet } from './workouts'
 import { routineGroups } from './supersets'
 import { setMeasurement } from './measurements'
 import { supersetLayout } from '../domain/supersets'
@@ -233,5 +233,47 @@ describe('custom exercises', () => {
     expect(await deleteExercise(e.id)).toEqual({ ok: true })
     // Built-in exercises can never be deleted.
     expect((await deleteExercise('bench-press')).ok).toBe(false)
+  })
+})
+
+describe('avatar game', () => {
+  async function logVolume(exerciseId: string, sets: [number, number][]) {
+    const id = await startWorkout()
+    await addExerciseToWorkout(id, await exercise(exerciseId))
+    const ws = await db.workoutExercises.where('workoutId').equals(id).first()
+    for (let i = 3; i < sets.length; i++) await addSet(ws!.id)
+    const rows = await db.sets.where('workoutId').equals(id).sortBy('order')
+    for (const [i, [weightKg, reps]] of sets.entries()) await updateSet(rows[i].id, { weightKg, reps, done: true })
+    await finishWorkout(id)
+    return id
+  }
+
+  it('starts at 0 coins, ignores workouts from before the start, and earns 1 coin per 10,000 kg', async () => {
+    const { loadGameState } = await import('./game')
+    // A workout finished before the game started doesn't earn coins.
+    const old = await logVolume('squat', [[100, 10], [100, 10], [100, 10]])
+    await db.workouts.update(old, { endedAt: 1, startedAt: 1 })
+    let state = await loadGameState()
+    expect(state.ledger.earned).toBe(0)
+    expect(state.unlocked.has('first-workout')).toBe(true) // achievements use all history
+    expect(state.owned.has('headband-rookie')).toBe(true)
+
+    await logVolume('squat', [[100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10], [100, 10]]) // 12,000 kg
+    state = await loadGameState()
+    expect(state.ledger.earned).toBe(1)
+    expect(state.ledger.kgToNextCoin).toBe(8_000)
+  })
+
+  it('buys and equips items only with enough coins', async () => {
+    const { loadGameState, buyItem } = await import('./game')
+    expect(await buyItem('tee-black')).toEqual({ ok: false, reason: 'You need 3 more coins.' })
+    expect((await buyItem('headband-rookie')).ok).toBe(false) // achievement items aren't for sale
+    await logVolume('leg-press', Array.from({ length: 10 }, () => [300, 10] as [number, number])) // 30,000 kg → 3 coins
+    expect(await buyItem('tee-black')).toEqual({ ok: true })
+    const state = await loadGameState()
+    expect(state.ledger.balance).toBe(0)
+    expect(state.owned.has('tee-black')).toBe(true)
+    expect(state.look.equipped.top).toBe('tee-black')
+    expect((await buyItem('tee-black')).ok).toBe(false) // already owned
   })
 })

@@ -20,6 +20,7 @@ import { setVolume, totalVolume } from '../domain/volume'
 import { sumMacros } from '../domain/macros'
 import { WEEKDAY_LABELS } from '../domain/week'
 import { MEASUREMENT_SITES, MEASUREMENT_SITE_IDS } from '../domain/measurements'
+import { BODY_TYPES, DEFAULT_LOOK, HAIR_STYLES, ITEMS_BY_ID, type BodyType, type HairStyle } from '../domain/game/catalog'
 
 type Kind = 'string' | 'number' | 'nullableNumber' | 'nullableString' | 'bool' | 'date' | 'nullableDate' | 'list' | 'optionalList'
 
@@ -60,6 +61,7 @@ const TABLES = {
   macroEntries: () => db.macroEntries,
   mealPresets: () => db.mealPresets,
   muscles: () => db.muscles,
+  purchases: () => db.purchases,
   bodyweight: () => db.bodyweight,
   measurements: () => db.measurements,
 }
@@ -290,6 +292,22 @@ const SPECS = [
     ],
   },
   {
+    name: 'Shop Purchases',
+    table: 'purchases',
+    optional: true,
+    schema: z.object({
+      itemId: z.string().min(1),
+      price: z.number().min(0),
+      purchasedAt: z.number(),
+    }),
+    columns: [
+      { header: 'Item', width: 22, display: (r) => ITEMS_BY_ID.get(r.itemId)?.name ?? r.itemId },
+      { header: 'Price (coins)', field: 'price', kind: 'number' },
+      { header: 'Bought', field: 'purchasedAt', kind: 'date', width: 18 },
+      { header: 'Item ID', field: 'itemId', kind: 'string', width: 20 },
+    ],
+  },
+  {
     name: 'Meal Presets',
     table: 'mealPresets',
     schema: z.object({
@@ -355,6 +373,16 @@ const settingsSchema = z.object({
     .record(z.string().refine((k): boolean => isMuscleId(k), 'not a known muscle'), z.union([z.literal('off'), z.object({ min: z.number(), max: z.number() })]))
     .default({}),
   countSecondary: z.boolean().default(true),
+  coinsSince: nullableNum.default(null),
+  avatar: z
+    .object({
+      bodyType: z.enum(BODY_TYPES.map((b) => b.id) as [BodyType, ...BodyType[]]),
+      skinTone: z.string(),
+      hairStyle: z.enum(HAIR_STYLES.map((h) => h.id) as [HairStyle, ...HairStyle[]]),
+      hairColor: z.string(),
+      equipped: z.record(z.string(), z.string().nullable()),
+    })
+    .default(DEFAULT_LOOK),
 })
 
 /** Excel has no time zones; shift so the sheet shows local wall-clock time. */

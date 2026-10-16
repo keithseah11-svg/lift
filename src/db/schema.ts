@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type {
   BodyweightEntry,
+  Purchase,
   Measurement,
   ProgressPhoto,
   Exercise,
@@ -37,6 +38,7 @@ export class LiftDB extends Dexie {
   measurements!: EntityTable<Measurement, 'id'>
   photos!: EntityTable<ProgressPhoto, 'id'>
   muscles!: EntityTable<CustomMuscle, 'id'>
+  purchases!: EntityTable<Purchase, 'itemId'>
 
   constructor(name = 'lift') {
     super(name)
@@ -58,12 +60,22 @@ export class LiftDB extends Dexie {
     this.version(3).stores({ measurements: 'id, date, site', photos: 'id, date, pose' })
     // v4: muscle groups you add yourself.
     this.version(4).stores({ muscles: 'id' })
+    // v5: item shop purchases.
+    this.version(5).stores({ purchases: 'itemId' })
     this.on('populate', (tx) => {
       tx.table('exercises').bulkAdd(SEED_EXERCISES)
     })
     // Exercises added to the built-in library in later updates reach existing
     // installs here. Only missing ids are added; nothing existing is changed.
-    this.on('ready', () => addMissingSeedExercises(this))
+    // Sticky: runs on every open, not just the first (e.g. after a restore or reopen).
+    this.on(
+      'ready',
+      async () => {
+        await addMissingSeedExercises(this)
+        await startCoinsIfNeeded(this)
+      },
+      true,
+    )
   }
 }
 
@@ -72,6 +84,13 @@ export async function addMissingSeedExercises(db: LiftDB): Promise<number> {
   const missing = SEED_EXERCISES.filter((e) => !existing.has(e.id))
   if (missing.length) await db.exercises.bulkAdd(missing)
   return missing.length
+}
+
+/** Coins count from the first time this version runs ("start from 0 today"). */
+export async function startCoinsIfNeeded(db: LiftDB): Promise<void> {
+  const row = await db.kv.get('settings')
+  const value = (row?.value ?? {}) as { coinsSince?: number | null }
+  if (value.coinsSince == null) await db.kv.put({ key: 'settings', value: { ...value, coinsSince: Date.now() } })
 }
 
 export const db = new LiftDB()

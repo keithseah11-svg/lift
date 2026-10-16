@@ -12,6 +12,7 @@ import { PlanPage } from '../features/plan/PlanPage'
 import { RoutineEditorPage } from '../features/plan/RoutineEditorPage'
 import { FoodPage } from '../features/nutrition/FoodPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { AvatarPage } from '../features/avatar/AvatarPage'
 import { MuscleTargetsPage } from '../features/settings/MuscleTargetsPage'
 import { MuscleDetailPage } from '../features/settings/MuscleDetailPage'
 import { ExerciseLibraryPage } from '../features/settings/ExerciseLibraryPage'
@@ -34,6 +35,7 @@ export const router = createHashRouter([
       { path: '/plan/routine/:id', element: <RoutineEditorPage /> },
       { path: '/food', element: <FoodPage /> },
       { path: '/settings', element: <SettingsPage /> },
+      { path: '/avatar', element: <AvatarPage /> },
       { path: '/settings/muscles', element: <MuscleTargetsPage /> },
       { path: '/settings/muscles/:id', element: <MuscleDetailPage /> },
       { path: '/settings/exercises', element: <ExerciseLibraryPage /> },
