@@ -116,4 +116,127 @@ export const SEED_EXERCISES: Exercise[] = [
   ex('hanging-leg-raise', 'Hanging Leg Raise', 'bodyweight', 'abs', [], 60),
   ex('plank', 'Plank', 'bodyweight', 'abs', [], 60),
   ex('ab-wheel', 'Ab Wheel Rollout', 'bodyweight', 'abs', [], 60),
+  // ---- Library expansion: 100 more commonly logged exercises ----
+
+  // Chest
+  ex('decline-bench-press', 'Decline Bench Press (Barbell)', 'barbell', 'chest', ['triceps', 'front_delts'], 180),
+  ex('db-decline-press', 'Decline Press (Dumbbell)', 'dumbbell', 'chest', ['triceps', 'front_delts'], 150),
+  ex('smith-bench-press', 'Bench Press (Smith Machine)', 'machine', 'chest', ['triceps', 'front_delts'], 150),
+  ex('smith-incline-press', 'Incline Bench Press (Smith Machine)', 'machine', 'chest', ['front_delts', 'triceps'], 150),
+  ex('incline-machine-press', 'Incline Chest Press (Machine)', 'machine', 'chest', ['front_delts', 'triceps']),
+  ex('db-incline-fly', 'Incline Fly (Dumbbell)', 'dumbbell', 'chest', ['front_delts'], 90),
+  ex('low-to-high-cable-fly', 'Low to High Cable Fly', 'cable', 'chest', ['front_delts'], 90),
+  ex('high-to-low-cable-fly', 'High to Low Cable Fly', 'cable', 'chest', [], 90),
+  ex('db-pullover', 'Pullover (Dumbbell)', 'dumbbell', 'chest', ['lats', 'triceps'], 90),
+  ex('assisted-dip', 'Assisted Dip (Machine)', 'machine', 'chest', ['triceps', 'front_delts']),
+  ex('incline-push-up', 'Incline Push Up', 'bodyweight', 'chest', ['triceps', 'front_delts'], 60),
+  ex('db-floor-press', 'Floor Press (Dumbbell)', 'dumbbell', 'chest', ['triceps']),
+
+  // Back
+  ex('pendlay-row', 'Pendlay Row (Barbell)', 'barbell', 'upper_back', ['lats', 'rear_delts', 'biceps', 'lower_back'], 150),
+  ex('seal-row', 'Seal Row (Barbell)', 'barbell', 'upper_back', ['lats', 'rear_delts', 'biceps']),
+  ex('machine-row', 'Seated Row (Machine)', 'machine', 'upper_back', ['lats', 'rear_delts', 'biceps']),
+  ex('single-arm-cable-row', 'Single Arm Cable Row', 'cable', 'lats', ['upper_back', 'biceps'], 90),
+  ex('close-grip-pulldown', 'Close Grip Lat Pulldown', 'cable', 'lats', ['biceps', 'upper_back']),
+  ex('reverse-grip-pulldown', 'Reverse Grip Lat Pulldown', 'cable', 'lats', ['biceps', 'upper_back']),
+  ex('single-arm-pulldown', 'Single Arm Lat Pulldown (Cable)', 'cable', 'lats', ['biceps'], 90),
+  ex('machine-pulldown', 'Lat Pulldown (Machine)', 'machine', 'lats', ['biceps', 'upper_back']),
+  ex('assisted-pull-up', 'Assisted Pull Up (Machine)', 'machine', 'lats', ['biceps', 'upper_back']),
+  ex('inverted-row', 'Inverted Row', 'bodyweight', 'upper_back', ['lats', 'biceps', 'rear_delts'], 90),
+  ex('rack-pull', 'Rack Pull (Barbell)', 'barbell', 'lower_back', ['traps', 'glutes', 'hamstrings', 'upper_back'], 180),
+  ex('sumo-deadlift', 'Sumo Deadlift (Barbell)', 'barbell', 'glutes', ['quads', 'hamstrings', 'lower_back', 'traps'], 240),
+  ex('trap-bar-deadlift', 'Trap Bar Deadlift', 'other', 'quads', ['glutes', 'hamstrings', 'lower_back', 'traps'], 240),
+  ex('good-morning', 'Good Morning (Barbell)', 'barbell', 'hamstrings', ['lower_back', 'glutes'], 150),
+  ex('machine-shrug', 'Shrug (Machine)', 'machine', 'traps', [], 90),
+
+  // Shoulders
+  ex('arnold-press', 'Arnold Press (Dumbbell)', 'dumbbell', 'front_delts', ['side_delts', 'triceps']),
+  ex('seated-ohp', 'Seated Overhead Press (Barbell)', 'barbell', 'front_delts', ['side_delts', 'triceps'], 150),
+  ex('push-press', 'Push Press (Barbell)', 'barbell', 'front_delts', ['side_delts', 'triceps', 'quads'], 180),
+  ex('smith-shoulder-press', 'Shoulder Press (Smith Machine)', 'machine', 'front_delts', ['side_delts', 'triceps']),
+  ex('landmine-press', 'Landmine Press', 'barbell', 'front_delts', ['chest', 'triceps']),
+  ex('pike-push-up', 'Pike Push Up', 'bodyweight', 'front_delts', ['triceps', 'side_delts'], 90),
+  ex('machine-lateral-raise', 'Lateral Raise (Machine)', 'machine', 'side_delts', [], 90),
+  ex('seated-db-lateral-raise', 'Seated Lateral Raise (Dumbbell)', 'dumbbell', 'side_delts', [], 90),
+  ex('cable-upright-row', 'Upright Row (Cable)', 'cable', 'side_delts', ['traps'], 90),
+  ex('cable-front-raise', 'Front Raise (Cable)', 'cable', 'front_delts', [], 60),
+  ex('cable-rear-delt-fly', 'Rear Delt Fly (Cable)', 'cable', 'rear_delts', ['upper_back'], 90),
+  ex('db-rear-delt-row', 'Rear Delt Row (Dumbbell)', 'dumbbell', 'rear_delts', ['upper_back', 'biceps'], 90),
+
+  // Biceps
+  ex('concentration-curl', 'Concentration Curl (Dumbbell)', 'dumbbell', 'biceps', [], 60),
+  ex('spider-curl', 'Spider Curl (Dumbbell)', 'dumbbell', 'biceps', [], 60),
+  ex('db-preacher-curl', 'Preacher Curl (Dumbbell)', 'dumbbell', 'biceps', [], 60),
+  ex('ez-preacher-curl', 'Preacher Curl (EZ Bar)', 'barbell', 'biceps', [], 90),
+  ex('machine-curl', 'Bicep Curl (Machine)', 'machine', 'biceps', [], 60),
+  ex('bayesian-curl', 'Bayesian Curl (Cable)', 'cable', 'biceps', [], 60),
+  ex('cable-hammer-curl', 'Hammer Curl (Cable)', 'cable', 'biceps', ['forearms'], 60),
+  ex('drag-curl', 'Drag Curl (Barbell)', 'barbell', 'biceps', [], 60),
+  ex('zottman-curl', 'Zottman Curl (Dumbbell)', 'dumbbell', 'biceps', ['forearms'], 60),
+  ex('reverse-curl', 'Reverse Curl (EZ Bar)', 'barbell', 'forearms', ['biceps'], 60),
+
+  // Triceps
+  ex('rope-pushdown', 'Triceps Rope Pushdown', 'cable', 'triceps', [], 60),
+  ex('db-kickback', 'Triceps Kickback (Dumbbell)', 'dumbbell', 'triceps', [], 60),
+  ex('cable-kickback', 'Triceps Kickback (Cable)', 'cable', 'triceps', [], 60),
+  ex('db-skull-crusher', 'Skull Crusher (Dumbbell)', 'dumbbell', 'triceps', [], 90),
+  ex('machine-triceps-dip', 'Triceps Dip (Machine)', 'machine', 'triceps', ['chest'], 90),
+  ex('machine-triceps-extension', 'Triceps Extension (Machine)', 'machine', 'triceps', [], 60),
+  ex('bench-dip', 'Bench Dip', 'bodyweight', 'triceps', ['front_delts'], 60),
+  ex('diamond-push-up', 'Diamond Push Up', 'bodyweight', 'triceps', ['chest'], 60),
+
+  // Forearms & grip
+  ex('reverse-wrist-curl', 'Reverse Wrist Curl (Dumbbell)', 'dumbbell', 'forearms', [], 60),
+  ex('farmers-walk', "Farmer's Walk (Dumbbell)", 'dumbbell', 'forearms', ['traps', 'abs'], 90),
+  ex('dead-hang', 'Dead Hang', 'bodyweight', 'forearms', ['lats'], 60),
+
+  // Quads
+  ex('smith-squat', 'Squat (Smith Machine)', 'machine', 'quads', ['glutes'], 150),
+  ex('pendulum-squat', 'Pendulum Squat (Machine)', 'machine', 'quads', ['glutes'], 150),
+  ex('belt-squat', 'Belt Squat (Machine)', 'machine', 'quads', ['glutes'], 150),
+  ex('box-squat', 'Box Squat (Barbell)', 'barbell', 'quads', ['glutes', 'hamstrings'], 180),
+  ex('pause-squat', 'Pause Squat (Barbell)', 'barbell', 'quads', ['glutes', 'lower_back'], 180),
+  ex('db-split-squat', 'Split Squat (Dumbbell)', 'dumbbell', 'quads', ['glutes']),
+  ex('db-reverse-lunge', 'Reverse Lunge (Dumbbell)', 'dumbbell', 'quads', ['glutes']),
+  ex('barbell-lunge', 'Lunge (Barbell)', 'barbell', 'quads', ['glutes']),
+  ex('db-step-up', 'Step Up (Dumbbell)', 'dumbbell', 'quads', ['glutes'], 90),
+  ex('sissy-squat', 'Sissy Squat', 'bodyweight', 'quads', [], 90),
+  ex('bodyweight-squat', 'Bodyweight Squat', 'bodyweight', 'quads', ['glutes'], 60),
+
+  // Hamstrings & hinges
+  ex('stiff-leg-deadlift', 'Stiff Leg Deadlift (Barbell)', 'barbell', 'hamstrings', ['glutes', 'lower_back'], 150),
+  ex('single-leg-rdl', 'Single Leg Romanian Deadlift (Dumbbell)', 'dumbbell', 'hamstrings', ['glutes'], 90),
+  ex('smith-rdl', 'Romanian Deadlift (Smith Machine)', 'machine', 'hamstrings', ['glutes', 'lower_back']),
+  ex('standing-leg-curl', 'Standing Leg Curl (Machine)', 'machine', 'hamstrings', [], 90),
+  ex('nordic-curl', 'Nordic Hamstring Curl', 'bodyweight', 'hamstrings', []),
+  ex('glute-ham-raise', 'Glute Ham Raise', 'bodyweight', 'hamstrings', ['glutes']),
+  ex('kettlebell-swing', 'Kettlebell Swing', 'other', 'glutes', ['hamstrings', 'lower_back'], 90),
+
+  // Glutes
+  ex('machine-hip-thrust', 'Hip Thrust (Machine)', 'machine', 'glutes', ['hamstrings']),
+  ex('smith-hip-thrust', 'Hip Thrust (Smith Machine)', 'machine', 'glutes', ['hamstrings']),
+  ex('single-leg-hip-thrust', 'Single Leg Hip Thrust', 'bodyweight', 'glutes', ['hamstrings'], 60),
+  ex('cable-glute-kickback', 'Glute Kickback (Cable)', 'cable', 'glutes', [], 60),
+  ex('machine-glute-kickback', 'Glute Kickback (Machine)', 'machine', 'glutes', [], 60),
+  ex('cable-pull-through', 'Cable Pull Through', 'cable', 'glutes', ['hamstrings'], 90),
+  ex('curtsy-lunge', 'Curtsy Lunge (Dumbbell)', 'dumbbell', 'glutes', ['quads'], 90),
+
+  // Calves
+  ex('leg-press-calf-raise', 'Calf Press (Leg Press)', 'machine', 'calves', [], 60),
+  ex('smith-calf-raise', 'Standing Calf Raise (Smith Machine)', 'machine', 'calves', [], 60),
+  ex('single-leg-calf-raise', 'Single Leg Calf Raise (Dumbbell)', 'dumbbell', 'calves', [], 60),
+  ex('donkey-calf-raise', 'Donkey Calf Raise (Machine)', 'machine', 'calves', [], 60),
+
+  // Core
+  ex('russian-twist', 'Russian Twist', 'bodyweight', 'abs', [], 60),
+  ex('bicycle-crunch', 'Bicycle Crunch', 'bodyweight', 'abs', [], 60),
+  ex('lying-leg-raise', 'Lying Leg Raise', 'bodyweight', 'abs', [], 60),
+  ex('captains-chair-knee-raise', "Knee Raise (Captain's Chair)", 'bodyweight', 'abs', [], 60),
+  ex('side-plank', 'Side Plank', 'bodyweight', 'abs', [], 60),
+  ex('pallof-press', 'Pallof Press (Cable)', 'cable', 'abs', [], 60),
+  ex('cable-woodchopper', 'Woodchopper (Cable)', 'cable', 'abs', [], 60),
+  ex('machine-crunch', 'Crunch (Machine)', 'machine', 'abs', [], 60),
+  ex('sit-up', 'Sit Up', 'bodyweight', 'abs', [], 60),
+  ex('dead-bug', 'Dead Bug', 'bodyweight', 'abs', [], 60),
+  ex('toes-to-bar', 'Toes to Bar', 'bodyweight', 'abs', ['lats', 'forearms'], 90),
 ]
